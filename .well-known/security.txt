@@ -1,0 +1,4 @@
+Contact: mailto:mtcporto@gmail.com
+Expires: 2027-10-31T23:59:00Z
+Preferred-Languages: pt, en
+Canonical: https://todoku.com.br/.well-known/security.txt
