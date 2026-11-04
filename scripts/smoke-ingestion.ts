@@ -87,7 +87,7 @@ try {
   const attempts = await db.execute({ sql: "SELECT count(*) AS n FROM delivery_attempts WHERE tenant_id IN (?, ?)", args: [tenantA, tenantB] });
   assert.equal(Number(attempts.rows[0].n), 0);
   console.log(JSON.stringify({ origin: origin.origin, database: new URL(process.env.TURSO_DATABASE_URL!).hostname,
-    accepted: true, replay: true, conflict: true, isolation: true, concurrentReplays: 8,
+    accepted: true, replay: true, conflict: true, isolation: true, concurrentRequests: 8,
     persistedEvents: 4, pendingMessages: 4, deliveryAttempts: 0 }));
 } finally {
   try {
