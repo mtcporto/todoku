@@ -48,7 +48,17 @@ Templates iniciais: `user.welcome@1`, `system.validation@1`, `system.delivery_te
 
 ### Operação controlada da etapa 3
 
-Em 04/11/2026, o responsável confirmou remetente, destinatário, assunto e texto de **um único e-mail**. O escopo dedicado `todoku-controlled-test/delivery-test` tem chave Resend restrita a domínio verificado, allowlist de um destinatário e orçamento de uma mensagem. O evento foi persistido sem tentativa de envio. A liberação temporária do POST aplica-se apenas a Production e depende deste deployment automático GitHub/Vercel; preview e cron continuam dry-run. Após rastrear o resultado, revogar o envio desse escopo e restaurar o bloqueio global por novo deployment automático. Nenhuma campanha está autorizada.
+Em 04/11/2026, o responsável confirmou remetente, destinatário, assunto e texto de **um único e-mail**. O escopo dedicado `todoku-controlled-test/delivery-test` usou chave Resend restrita a domínio verificado, allowlist de um destinatário e orçamento de uma mensagem. O envio passou pela API publicada em `todoku.com.br`, com liberação temporária somente em Production, após o deployment automático do PR #8. Preview e cron permaneceram dry-run.
+
+Evidência preservada no banco único `todoku`:
+
+- Evento: `481218a6-9697-421b-9583-92202ca17937`.
+- ID Resend: `01a1a8d7-346a-74bf-90c7-5d883da18ead`.
+- Uma tentativa, uma reserva de orçamento e estado final `delivered`.
+- Webhooks assinados `email.sent` e `email.delivered` persistidos e processados; entrega recebida pelo Todoku em `2026-11-04T23:14:01.623Z`.
+- Consulta independente ao Resend confirmou `last_event=delivered`; o responsável também confirmou recebimento na caixa de entrada.
+
+Após a entrega, a configuração e a credencial de ingestão do teste foram revogadas e a chave dedicada de envio foi excluída no Resend. O segredo de webhook permanece criptografado para rastrear eventual atualização dessa entrega. `TODOKU_TEST_SEND_ENABLED=false` foi restaurado em Production; este registro acompanha o deployment automático que aplica o bloqueio global. Nenhuma campanha foi iniciada. Novos testes exigem nova autorização e provisionamento explícito.
 
 ## Webhooks e estados
 
