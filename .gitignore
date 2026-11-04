@@ -32,3 +32,9 @@ Thumbs.db
 *.swo
 .vercel
 .env*
+!.env.example
+.next/
+*.tsbuildinfo
+*.db
+*.db-shm
+*.db-wal

@@ -6,6 +6,7 @@ export const communicationEventSchema = z.strictObject({
   occurredAt: z.iso.datetime({ offset: true }),
   tenantId: z.string().min(1).max(100),
   applicationId: z.string().min(1).max(100),
+  trafficType: z.enum(["transactional", "marketing"]).default("transactional"),
   recipient: z.strictObject({ email: z.email().max(254) }),
   data: z.record(z.string(), z.unknown()),
   idempotencyKey: z.string().min(8).max(200),

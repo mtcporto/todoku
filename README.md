@@ -7,7 +7,7 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 ---
 
 > [!NOTE]
-> **Status atual do projeto:** Página provisória inicial e documentação de arquitetura. O backend, banco de dados e integrações com provedores descritos a seguir constituem as diretrizes arquiteturais planejadas para as próximas etapas de desenvolvimento e **ainda não foram implementados**.
+> **Status atual do projeto:** Next.js 16, React 19, TypeScript 6 e Node 24, com ingestão durável preparada para Turso. A API autentica credenciais por aplicação (somente hashes), verifica o escopo e persiste evento, outbox e auditoria atomicamente, com idempotência. A disponibilidade depende de configurar e migrar o banco escolhido. Consulte [docs/API.md](docs/API.md). **Não há envio de e-mails, worker ou integração Resend ativos.** Templates, preferências, BYOK, webhooks e painel continuam no roadmap.
 
 ---
 
@@ -46,7 +46,7 @@ $$\text{Aplicação} \longrightarrow \text{Evento} \longrightarrow \text{Todoku}
 
 ## 3. Direção Tecnológica
 
-A pilha tecnológica planejada para o desenvolvimento do Todoku é composta por:
+A pilha tecnológica do Todoku é composta por:
 
 - **Linguagem & Runtime:** Node.js e TypeScript para segurança de tipos em contratos de eventos.
 - **Camada Web & API:** Next.js para API de ingestão, visualização de templates e futura interface de gerenciamento.
