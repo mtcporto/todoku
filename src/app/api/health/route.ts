@@ -1,2 +1,9 @@
-import { NextResponse } from "next/server";
-export function GET() { return NextResponse.json({ service: "todoku", status: "up", ingestion: "disabled" }); }
+import { getDatabase } from "@/lib/database";
+import { handleHealthRequest } from "@/lib/http";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  return handleHealthRequest(getDatabase);
+}
