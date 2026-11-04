@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
     "db:migrate": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/migrate.ts",
-    "db:provision": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/provision-application.ts"
+    "db:provision": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/provision-application.ts",
+    "smoke:ingestion": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-ingestion.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
