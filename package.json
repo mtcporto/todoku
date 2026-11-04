@@ -16,13 +16,24 @@
     "db:provision": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/provision-application.ts",
     "smoke:ingestion": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-ingestion.ts",
     "db:provider": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-provider.ts",
-    "smoke:delivery": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-delivery.ts"
+    "smoke:delivery": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-delivery.ts",
+    "mail:provision": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/provision-mail.ts",
+    "mail:password": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/rotate-mail-password.ts",
+    "mail:source": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-mail-source.ts",
+    "mail:fixture": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/seed-mail-fixture.ts",
+    "smoke:mail": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-mail.ts",
+    "dev:mail:fixture": "node scripts/dev-mail-fixture.mjs",
+    "smoke:mail:browser": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/smoke-mail-browser.ts",
+    "mail:fixture:cleanup": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/cleanup-mail-fixture.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
+    "aws4fetch": "^1.0.20",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.37.0",
+    "sanitize-html": "^2.18.1",
     "svix": "^2.9.1",
     "zod": "^4.0.0"
   },
@@ -30,6 +41,8 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sanitize-html": "^2.16.2",
+    "playwright": "^1.64.1",
     "typescript": "^6.0.0"
   }
 }
