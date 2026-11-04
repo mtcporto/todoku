@@ -32,7 +32,7 @@ Para rotacionar a chave mestra, adicionar a nova chave ao keyring, mantê-la com
 
 O claim é transacional e reserva uma lease de 120 segundos com token de posse. A chamada ao provedor tem timeout de dez segundos e ocorre fora da transação. A finalização verifica o token; uma execução atrasada não pode sobrescrever o novo dono. Falha ao gravar o recibo deixa a lease recuperável e nunca é reportada como sucesso persistido.
 
-O request, o remetente, o destinatário, o template e a chave de idempotência ficam congelados na ingestão. Respostas 429/5xx e falhas de rede usam backoff exponencial desde 30 segundos com jitter, limitado a uma hora e ao número máximo de tentativas. Erros permanentes encerram o trabalho. Conflito de idempotência do provedor, chave indisponível ou configuração revogada exigem revisão.
+O request, o remetente, o destinatário, o template e a chave de idempotência ficam congelados na ingestão. Respostas 429/5xx e falhas de rede usam backoff exponencial desde 30 segundos com jitter, limitado a uma hora e ao número máximo de tentativas. Erros permanentes encerram o trabalho quando não existe incerteza anterior; uma rejeição posterior não resolve um possível aceite anterior e, ao encerrar os retries, exige revisão manual. Conflito de idempotência do provedor, chave indisponível ou configuração revogada também exigem revisão.
 
 O Resend retém chaves de idempotência por **24 horas**. O Todoku usa uma janela conservadora de **23 horas**, medida desde a primeira tentativa, para repetir um resultado ambíguo com a mesma chave e payload. Após essa janela, ou ao esgotar tentativas ambíguas, entra em `manual_review`; não tenta automaticamente outra chave. Leases expiradas não provam ausência de envio. **Não há promessa de exactly-once ponta a ponta.** [Idempotência do Resend](https://resend.com/docs/dashboard/emails/idempotency-keys).
 
@@ -45,6 +45,10 @@ Antes de enviar, apresentar remetente, destinatário, assunto e conteúdo e conf
 Depois de configurar e autorizar o teste, liberar `TODOKU_TEST_SEND_ENABLED=true` no servidor e publicar pelo GitHub/Vercel. Invocar `POST /api/internal/worker` com a credencial de worker e JSON `{ "configurationId": "<id-confirmado>" }`. Consumidores só enviam eventos à API do Todoku; não conhecem Resend, chaves de transporte ou credencial do worker.
 
 Templates iniciais: `user.welcome@1`, `system.validation@1`, `system.delivery_test@1`. O texto é validado por schema e escapado no HTML. Uma mensagem dry-run não será enviada depois de mudar o modo: sua fila fica terminal `cancelled`, com estado explícito `dry_run`. Criar um evento novo para o teste autorizado.
+
+### Operação controlada da etapa 3
+
+Em 04/11/2026, o responsável confirmou remetente, destinatário, assunto e texto de **um único e-mail**. O escopo dedicado `todoku-controlled-test/delivery-test` tem chave Resend restrita a domínio verificado, allowlist de um destinatário e orçamento de uma mensagem. O evento foi persistido sem tentativa de envio. A liberação temporária do POST aplica-se apenas a Production e depende deste deployment automático GitHub/Vercel; preview e cron continuam dry-run. Após rastrear o resultado, revogar o envio desse escopo e restaurar o bloqueio global por novo deployment automático. Nenhuma campanha está autorizada.
 
 ## Webhooks e estados
 
