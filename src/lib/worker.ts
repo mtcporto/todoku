@@ -102,6 +102,7 @@ async function finish(db: Client, job: Claim, result: SendResult | { kind: "dry_
   return transaction(db, async tx => {
     const owner = (await tx.execute({ sql: "SELECT lease_token FROM outbox_messages WHERE tenant_id = ? AND application_id = ? AND id = ? AND status = 'processing'", args: [job.tenantId, job.applicationId, job.id] })).rows[0];
     if (!owner || owner.lease_token !== job.token) return "lease_lost";
+    const priorAmbiguity = (await tx.execute({ sql: "SELECT id FROM delivery_attempts WHERE tenant_id = ? AND application_id = ? AND outbox_id = ? AND status = 'ambiguous' LIMIT 1", args: [job.tenantId, job.applicationId, job.id] })).rows.length > 0;
     let outboxStatus = "dead", state = "failed", attemptStatus = "permanent_failure", action = "failed";
     let code: string | null = null;
     let providerId: string | null = null;
@@ -111,10 +112,11 @@ async function finish(db: Client, job: Claim, result: SendResult | { kind: "dry_
     else {
       code = result.code;
       if (result.kind === "review") { outboxStatus = "manual_review"; state = "manual_review"; attemptStatus = "ambiguous"; action = "manual_review"; }
+      if (result.kind === "permanent" && priorAmbiguity) { outboxStatus = "manual_review"; state = "manual_review"; action = "manual_review"; }
       if (result.kind === "retryable") {
         const retry = retryDecision({ attempts: job.attemptCount, maxAttempts: job.maxAttempts, outcome: "transient_not_sent", now, jitter });
         const next = retry.status === "retry_wait" ? Math.max(Date.parse(retry.availableAt), now + (result.retryAfterMs ?? 0)) : now;
-        if (now - job.firstAttemptAt >= IDEMPOTENCY_WINDOW_MS || (result.uncertain && (retry.status !== "retry_wait" || next - job.firstAttemptAt >= IDEMPOTENCY_WINDOW_MS))) {
+        if (now - job.firstAttemptAt >= IDEMPOTENCY_WINDOW_MS || ((result.uncertain || priorAmbiguity) && (retry.status !== "retry_wait" || next - job.firstAttemptAt >= IDEMPOTENCY_WINDOW_MS))) {
           outboxStatus = "manual_review"; state = "manual_review"; action = "manual_review";
         } else if (retry.status === "retry_wait") { outboxStatus = "retry_wait"; state = "queued"; action = "retry_scheduled"; availableAt = new Date(next).toISOString(); }
         attemptStatus = result.uncertain ? "ambiguous" : "transient_failure";

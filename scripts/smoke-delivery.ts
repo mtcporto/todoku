@@ -38,11 +38,15 @@ try {
   }) });
   assert.equal(response.status, 202);
   const accepted = await response.json();
-  const worker = await call("/api/internal/worker", { headers: { authorization: `Bearer ${cronSecret}` } });
-  assert.equal(worker.status, 200);
-  const status = await call(`/api/v1/events/${accepted.eventId}`, { headers: { authorization: `Bearer ${token}` } });
-  assert.equal(status.status, 200);
-  const state = await status.json();
+  let state;
+  for (let batch = 0; batch < 20; batch++) {
+    const worker = await call("/api/internal/worker", { headers: { authorization: `Bearer ${cronSecret}` } });
+    assert.equal(worker.status, 200);
+    const status = await call(`/api/v1/events/${accepted.eventId}`, { headers: { authorization: `Bearer ${token}` } });
+    assert.equal(status.status, 200);
+    state = await status.json();
+    if (state.deliveryState !== "queued") break;
+  }
   assert.equal(state.deliveryState, "dry_run");
   assert.equal(state.providerMessageId, null);
   const attempts = (await db.execute({ sql: "SELECT provider, status FROM delivery_attempts WHERE tenant_id = ? AND application_id = ?", args: [scope.tenantId, scope.applicationId] })).rows;

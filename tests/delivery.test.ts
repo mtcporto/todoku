@@ -318,6 +318,26 @@ test("permanent failures terminate, exhausted ambiguous attempts require review,
   }
 });
 
+test("a later rejection cannot resolve an earlier ambiguous acceptance", async () => {
+  for (const finalKind of ["permanent", "retryable", "accepted"] as const) {
+    const f = await fixture("test");
+    let now = Date.now() + 1000;
+    try {
+      await enqueue(f.db);
+      await f.db.execute("UPDATE outbox_messages SET max_attempts = 2");
+      await runWorker(f.db, { mode: "test", configurationId: f.configId, keyring: ring, now: () => now, jitter: () => 0,
+        providerFactory: factory(async () => ({ kind: "retryable", code: "provider_timeout_or_network", uncertain: true })) });
+      now += 3_600_000;
+      const result = await runWorker(f.db, { mode: "test", configurationId: f.configId, keyring: ring, now: () => now,
+        providerFactory: factory(async () => finalKind === "accepted" ? { kind: "accepted", providerMessageId: providerId }
+          : finalKind === "permanent" ? { kind: "permanent", code: "provider_rejected" }
+          : { kind: "retryable", code: "provider_rate_limited", uncertain: false }) });
+      assert.deepEqual(result.states, [finalKind === "accepted" ? "sent" : "manual_review"]);
+      assert.equal((await f.db.execute("SELECT status FROM outbox_messages")).rows[0].status, finalKind === "accepted" ? "sent" : "manual_review");
+    } finally { f.close(); }
+  }
+});
+
 test("a correctly signed webhook for an unrelated email cannot alter another application", async () => {
   const f = await fixture("test");
   try {
