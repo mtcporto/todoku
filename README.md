@@ -11,6 +11,8 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 
 ---
 
+**Todoku Mail — MVP 1:** webmail em `/mail`, com login real, grants por identidade, caixa unificada, filtros, leitura segura, threads e anexos autenticados. O piloto está **pausado**, sem alteração de DNS ou recebimento externo; R2 e Resend Receiving aguardam provisionamento/aprovação. Veja [docs/MAIL.md](docs/MAIL.md) para arquitetura, acesso, testes, limites e próximos incrementos de forwarding/reply.
+
 ## 1. Fluxo Conceitual
 
 A arquitetura do Todoku baseia-se na separação entre a geração do evento pela aplicação de origem e a execução da entrega ao destinatário:
@@ -67,6 +69,8 @@ flowchart TD
 2. **Etapa 2:** Implementação do serviço centralizado conectando Resend e persistência básica no Turso.
 3. **Etapa 3:** Camada multi-tenant com suporte completo ao modelo Bring Your Own Key (BYOK).
 4. **Etapa 4:** Motor de templates versionados, ingestão de webhooks, deduplicação e trilha de auditoria.
+
+**Trilha Mail:** MVP 1 com inbox protegida e pipeline inbound testado; ativação do piloto depende de storage privado e aprovação de DNS. Depois: forwarding opcional, reply/send identity, busca e organização. Detalhes em [docs/MAIL.md](docs/MAIL.md).
 5. **Etapa 5:** Painel administrativo para acompanhamento operacional, métricas de envio e configuração de tenants.
 
 ---
