@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import type { Client, Transaction } from "@libsql/client";
 import type { CommunicationEvent } from "./events.ts";
+import { activeConfiguration } from "./configurations.ts";
+import { renderTemplate, TemplateError } from "./templates.ts";
 
 export class IngestionError extends Error {
   readonly status: number;
@@ -71,7 +73,18 @@ export async function ingestEvent(db: Client, token: string, event: Communicatio
       args: [scope.tenantId, scope.applicationId, event.id],
     });
     if (duplicateId.rows.length) throw new IngestionError("event_id_conflict", 409);
+    if (event.trafficType === "marketing") throw new IngestionError("marketing_disabled", 422);
+    let rendered;
+    try { rendered = renderTemplate(event); } catch (error) {
+      if (error instanceof TemplateError) throw new IngestionError(error.message, 422);
+      throw error;
+    }
+    const configuration = await activeConfiguration(tx, scope);
+    if (!configuration) throw new IngestionError("provider_not_configured", 422);
+    if (configuration.mode === "test" && !configuration.allowedRecipients.includes(event.recipient.email.toLowerCase())) throw new IngestionError("recipient_not_authorized", 403);
+    if (configuration.mode === "test" && configuration.sendCount >= configuration.sendLimit) throw new IngestionError("test_send_limit_reached", 422);
     const eventId = randomUUID();
+    const outboxId = randomUUID();
     await tx.execute({
       sql: `INSERT INTO events(tenant_id, application_id, id, producer_event_id, idempotency_key,
         payload_hash, payload_json, event_type, traffic_type, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -79,8 +92,12 @@ export async function ingestEvent(db: Client, token: string, event: Communicatio
     });
     await tx.execute({
       sql: "INSERT INTO outbox_messages(tenant_id, application_id, id, event_id, traffic_type) VALUES (?, ?, ?, ?, ?)",
-      args: [scope.tenantId, scope.applicationId, randomUUID(), eventId, event.trafficType],
+      args: [scope.tenantId, scope.applicationId, outboxId, eventId, event.trafficType],
     });
+    await tx.execute({ sql: `INSERT INTO message_deliveries(tenant_id, application_id, outbox_id, configuration_id, mode, template_version, request_json, idempotency_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, args: [scope.tenantId, scope.applicationId, outboxId, configuration.id, configuration.mode, rendered.templateVersion,
+        JSON.stringify({ from: `${configuration.senderName} <${configuration.senderEmail}>`, to: [event.recipient.email.toLowerCase()], subject: rendered.subject, text: rendered.text, html: rendered.html }),
+        `todoku/${createHash("sha256").update(JSON.stringify([scope.tenantId, scope.applicationId])).digest("hex").slice(0, 24)}/${outboxId}`] });
     await tx.execute({
       sql: "INSERT INTO audit_log(tenant_id, application_id, id, event_id, credential_id, action) VALUES (?, ?, ?, ?, ?, 'event.accepted')",
       args: [scope.tenantId, scope.applicationId, randomUUID(), eventId, scope.credentialId],

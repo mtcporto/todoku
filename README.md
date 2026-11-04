@@ -7,7 +7,7 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 ---
 
 > [!NOTE]
-> **Status atual do projeto:** Next.js 16, React 19, TypeScript 6 e Node 24, com ingestão durável preparada para Turso. A API autentica credenciais por aplicação (somente hashes), verifica o escopo e persiste evento, outbox e auditoria atomicamente, com idempotência. A disponibilidade depende de configurar e migrar o banco escolhido. Consulte [docs/API.md](docs/API.md). **Não há envio de e-mails, worker ou integração Resend ativos.** Templates, preferências, BYOK, webhooks e painel continuam no roadmap.
+> **Status atual do projeto:** Next.js 16, React 19, TypeScript 6 e Node 24, com ingestão durável no Turso, templates versionados, BYOK criptografado, worker autenticado e webhooks assinados do Resend. **O processamento padrão é dry-run, sem envio externo; marketing está desabilitado.** Testes reais exigem configuração por tenant/aplicação, domínio verificado, destinatário autorizado, orçamento de envio e liberação explícita no servidor. Consulte [docs/API.md](docs/API.md), [docs/DELIVERY.md](docs/DELIVERY.md) e [docs/OPERATIONS.md](docs/OPERATIONS.md). Preferências avançadas e painel continuam no roadmap.
 
 ---
 

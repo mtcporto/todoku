@@ -18,5 +18,13 @@ export type DeliveryStatus = "accepted" | "queued" | "sent" | "delivered" | "fai
 
 export interface DeliveryProvider {
   readonly channel: DeliveryChannel;
-  send(input: { to: string; subject: string; html: string; idempotencyKey: string }): Promise<{ providerMessageId: string }>;
+  readonly name: string;
+  send(input: SendInput): Promise<SendResult>;
 }
+
+export type EmailMessage = { from: string; to: string[]; subject: string; text: string; html: string };
+export type SendInput = { message: EmailMessage; idempotencyKey: string };
+export type SendResult =
+  | { kind: "accepted"; providerMessageId: string }
+  | { kind: "retryable"; code: string; uncertain: boolean; retryAfterMs?: number }
+  | { kind: "permanent" | "review"; code: string };

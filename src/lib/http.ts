@@ -65,7 +65,7 @@ export async function handleEventRequest(request: Request, database: DatabasePro
 export async function handleHealthRequest(database: DatabaseProvider) {
   try {
     if (await isDatabaseReady(database())) {
-      return json({ service: "todoku", status: "ready", ingestion: "durable", delivery: "disabled" }, 200);
+      return json({ service: "todoku", status: "ready", ingestion: "durable", delivery: "dry_run", marketing: "disabled" }, 200);
     }
   } catch { /* Report readiness without configuration details. */ }
   return json({ service: "todoku", status: "unavailable", ingestion: "unavailable", delivery: "disabled" }, 503);

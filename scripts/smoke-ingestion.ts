@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { getDatabase, isDatabaseReady } from "../src/lib/database.ts";
 import { hashCredential } from "../src/lib/ingestion.ts";
+import { provisionConfiguration } from "../src/lib/configurations.ts";
 
 // Explicit integration test: writes synthetic events and retains their audit trail.
 // It refuses a service with delivery enabled and revokes all test credentials afterwards.
@@ -22,7 +23,7 @@ assert.equal(health.status, 200, "Service must be ready before validation");
 const healthBody = await health.json();
 assert.equal(healthBody.service, "todoku");
 assert.equal(healthBody.ingestion, "durable");
-assert.equal(healthBody.delivery, "disabled", "Refusing to create events when delivery is enabled");
+assert.ok(["disabled", "dry_run"].includes(healthBody.delivery), "Refusing to create events when delivery is enabled");
 
 const db = getDatabase();
 const tenantA = `validation-${randomUUID()}`;
@@ -43,6 +44,9 @@ try {
     ]),
   ], "write");
   provisioned = true;
+  for (const scope of scopes) {
+    await provisionConfiguration(db, { tenantId: scope.tenant, applicationId: scope.app, mode: "dry_run", senderEmail: "dry-run@example.invalid", senderName: "Todoku" });
+  }
   const payload = {
     id: randomUUID(), type: "system.validation", occurredAt: new Date().toISOString(),
     tenantId: tenantA, applicationId: "smoke", recipient: { email: "validation@example.invalid" },
@@ -75,20 +79,20 @@ try {
     assert.equal((await isolated.json()).replay, false);
   }
   const marketing = await post({ ...payload, id: randomUUID(), idempotencyKey: randomUUID(), trafficType: "marketing" });
-  assert.equal(marketing.status, 202);
+  assert.equal(marketing.status, 422);
   for (const table of ["events", "outbox_messages", "audit_log"]) {
     const result = await db.execute({ sql: `SELECT count(*) AS n FROM ${table} WHERE tenant_id IN (?, ?)`, args: [tenantA, tenantB] });
-    assert.equal(Number(result.rows[0].n), 4, `${table}: unexpected duplication or missing persistence`);
+    assert.equal(Number(result.rows[0].n), 3, `${table}: unexpected duplication or missing persistence`);
   }
   const lane = await db.execute({ sql: "SELECT traffic_type, count(*) AS n FROM outbox_messages WHERE tenant_id IN (?, ?) GROUP BY traffic_type", args: [tenantA, tenantB] });
-  assert.deepEqual(lane.rows.map(row => [row.traffic_type, Number(row.n)]), [["marketing", 1], ["transactional", 3]]);
+  assert.deepEqual(lane.rows.map(row => [row.traffic_type, Number(row.n)]), [["transactional", 3]]);
   const pending = await db.execute({ sql: "SELECT count(*) AS n FROM outbox_messages WHERE tenant_id IN (?, ?) AND status = 'pending' AND attempt_count = 0", args: [tenantA, tenantB] });
-  assert.equal(Number(pending.rows[0].n), 4);
+  assert.equal(Number(pending.rows[0].n), 3);
   const attempts = await db.execute({ sql: "SELECT count(*) AS n FROM delivery_attempts WHERE tenant_id IN (?, ?)", args: [tenantA, tenantB] });
   assert.equal(Number(attempts.rows[0].n), 0);
   console.log(JSON.stringify({ origin: origin.origin, database: new URL(process.env.TURSO_DATABASE_URL!).hostname,
     accepted: true, replay: true, conflict: true, isolation: true, concurrentRequests: 8,
-    persistedEvents: 4, pendingMessages: 4, deliveryAttempts: 0 }));
+    persistedEvents: 3, pendingMessages: 3, marketing: "disabled", deliveryAttempts: 0 }));
 } finally {
   try {
     if (provisioned) {
