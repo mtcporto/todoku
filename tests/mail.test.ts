@@ -24,6 +24,37 @@ import {
 import { filename, hash, limits } from "../src/lib/mail/common.ts";
 import { ResendInbound } from "../src/lib/mail/provider.ts";
 
+test("Mail opens text-only messages with the plain-text fallback instead of an empty iframe", async () => {
+  const f = await fixture();
+  try {
+    const value = message({
+      html: null,
+      text: "Texto puro\n<script>isto é apenas texto</script>",
+    });
+    await f.enqueue(value);
+    await runMailWorker(f.db, f.storage, {
+      enabled: true,
+      fixtures: true,
+      provider: () => provider(value),
+    });
+    const id = String(
+      (await f.db.execute("SELECT id FROM mail_messages")).rows[0].id,
+    );
+    const response = await mailRequest(
+      f.request(`messages/${id}`),
+      ["messages", id],
+      f.db,
+      () => f.storage,
+    );
+    assert.equal(response.status, 200);
+    const content = await response.json();
+    assert.equal(content.document, null);
+    assert.equal(content.text, value.text);
+  } finally {
+    f.close();
+  }
+});
+
 test("Mail never cleans fixture objects through R2 and rejects a mismatched read backend", async () => {
   const f = await fixture();
   try {

@@ -192,7 +192,7 @@ export async function mailRequest(
           authentication: message.authentication,
           identityId: message.identity_id,
           text: content.text,
-          document: readerDocument(content.html),
+          document: content.html.trim() ? readerDocument(content.html) : null,
           attachments,
           thread,
         });

@@ -35,7 +35,7 @@ type Detail = {
   authentication: string;
   identityId: string;
   text: string;
-  document: string;
+  document: string | null;
   attachments: { id: string; filename: string; size: number }[];
   thread: {
     id: string;
