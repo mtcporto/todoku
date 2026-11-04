@@ -9,6 +9,7 @@ import { migrate } from "../src/lib/migrations.ts";
 import { hashCredential } from "../src/lib/ingestion.ts";
 import { handleEventRequest, handleHealthRequest } from "../src/lib/http.ts";
 import { retryDecision } from "../src/lib/queue-policy.ts";
+import { provisionConfiguration } from "../src/lib/configurations.ts";
 
 const tokenA = "a".repeat(43);
 const tokenB = "b".repeat(43);
@@ -48,6 +49,9 @@ async function fixture() {
       args: [tenant, app, id, hashCredential(token)],
     })),
   ], "write");
+  for (const scope of [{ tenantId: "tenant-a", applicationId: "app" }, { tenantId: "tenant-b", applicationId: "app" }, { tenantId: "tenant-a", applicationId: "other" }]) {
+    await provisionConfiguration(db, { ...scope, mode: "dry_run", senderEmail: "dry-run@example.invalid", senderName: "Todoku" });
+  }
   return { db, url, async close() { db.close(); } };
 }
 
@@ -151,7 +155,7 @@ test("simultaneous conflicting payloads resolve to 202 and 409 without duplicate
     const payload = event();
     const responses = await Promise.all([
       concurrentRequest(f.url, payload),
-      concurrentRequest(f.url, { ...payload, data: { changed: true } }),
+      concurrentRequest(f.url, { ...payload, data: { firstName: "Outro" } }),
     ]);
     assert.deepEqual(responses.map((response) => response.status).sort(), [202, 409]);
     assert.equal(await count(f.db, "outbox_messages"), 1);
@@ -199,13 +203,14 @@ test("commit failure and database outage cannot acknowledge acceptance or expose
 test("FKs, traffic constraints, state constraints and append-only audit protect integrity", async () => {
   const f = await fixture();
   try {
-    assert.equal((await handleEventRequest(request(event({ trafficType: "marketing" })), () => f.db)).status, 202);
+    assert.equal((await handleEventRequest(request(event({ trafficType: "marketing" })), () => f.db)).status, 422);
+    assert.equal((await handleEventRequest(request(event()), () => f.db)).status, 202);
     const row = (await f.db.execute("SELECT id, event_id, traffic_type FROM outbox_messages")).rows[0];
-    assert.equal(row.traffic_type, "marketing");
+    assert.equal(row.traffic_type, "transactional");
     for (const sql of [
       "UPDATE outbox_messages SET tenant_id = 'tenant-b'",
       "UPDATE outbox_messages SET application_id = 'other'",
-      "UPDATE outbox_messages SET traffic_type = 'transactional'",
+      "UPDATE outbox_messages SET traffic_type = 'marketing'",
       "UPDATE outbox_messages SET status = 'unknown'",
       "UPDATE outbox_messages SET attempt_count = 99",
       "UPDATE audit_log SET action = 'event.accepted'",
@@ -249,7 +254,7 @@ test("migrations are repeatable and checksummed; health requires applied schema"
     assert.deepEqual(await migrate(f.db, migrationDirectory), []);
     const health = await handleHealthRequest(() => f.db);
     assert.equal(health.status, 200);
-    assert.deepEqual(await health.json(), { service: "todoku", status: "ready", ingestion: "durable", delivery: "disabled" });
+    assert.deepEqual(await health.json(), { service: "todoku", status: "ready", ingestion: "durable", delivery: "dry_run", marketing: "disabled" });
     const source = await readFile(join(migrationDirectory, "0001_durable_ingestion.sql"), "utf8");
     await writeFile(join(directory, "0001_durable_ingestion.sql"), `${source}\n-- changed\n`);
     await assert.rejects(migrate(f.db, directory), /checksum mismatch/);

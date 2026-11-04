@@ -1,6 +1,6 @@
 # Todoku API — ingestão durável
 
-Node 24, Next 16, React 19 e TypeScript 6. `POST /api/v1/events` só retorna **202 após commit** de evento, outbox e auditoria no Turso. Não há worker, chamada Resend, webhook público nem envio externo nesta entrega.
+Node 24, Next 16, React 19 e TypeScript 6. `POST /api/v1/events` só retorna **202 após commit** de evento, outbox, snapshot de entrega e auditoria no Turso. O worker processa dry-run por padrão. Envios de teste dependem de autorização separada; consulte [DELIVERY.md](DELIVERY.md).
 
 ## Configuração e migração
 
@@ -10,6 +10,7 @@ Node 24, Next 16, React 19 e TypeScript 6. `POST /api/v1/events` só retorna **2
 4. Executar `npm run db:migrate -- libsql://<banco-verificado>.turso.io` usando exatamente a URL configurada. O comando recusa bases existentes sem histórico reconhecido. `migrations/0001_durable_ingestion.sql` é aplicada em transação e registrada em `schema_migrations`, com checksum SHA-256. Reexecutar não altera migrações já aplicadas; checksum diferente falha. Não editar migrações aplicadas; criar nova versão. Não executar migrações em builds ou requests.
 5. Executar `npm run db:provision -- <tenant-id> <application-id>` para criar o escopo e uma credencial aleatória de 256 bits. O token é salvo apenas no arquivo local ignorado `.env.credential.<tenant>.<application>.local`, com criação exclusiva, e nunca impresso. No Windows, proteger esse arquivo pelas ACLs da conta; `mode: 0600` não substitui ACLs. Entregar a credencial ao servidor consumidor por um canal seguro. Somente o hash SHA-256 é persistido em `application_credentials`.
 6. Configurar as duas variáveis Turso também na Vercel. Nesta fase inicial, Production, Preview e Development usam o mesmo banco `todoku`, conforme decisão do responsável; ver [OPERATIONS.md](OPERATIONS.md). Publicar pelo push e integração GitHub/Vercel; acompanhar o deployment automático, sem publicação manual duplicada.
+7. Configurar o transporte do escopo com `npm run db:provider -- dry-run <tenant-id> <application-id>`. Eventos novos exigem configuração ativa e template válido. O modo dry-run não precisa de chave Resend. Para BYOK real, seguir [DELIVERY.md](DELIVERY.md).
 
 Não existe mais `TODOKU_INGEST_API_KEY` global. Cada credencial resolve um único tenant e uma única aplicação no servidor. Para revogar, preencher `revoked_at` na linha do escopo correto; `expires_at` permite expiração. Desativar tenant, aplicação ou o scope da credencial também bloqueia ingestão, inclusive replays. A autenticação é revalidada dentro da transação de escrita.
 
@@ -31,7 +32,7 @@ Não existe mais `TODOKU_INGEST_API_KEY` global. Cada credencial resolve um úni
 }
 ```
 
-`tenantId` e `applicationId` são declarações verificadas contra a credencial, nunca a fonte de autoridade. Divergência resulta em 403. `trafficType` aceita `transactional` (padrão) ou `marketing`. O corpo é limitado a 32 KiB, inclusive durante leitura sem `Content-Length`. Campos extras no contrato são rejeitados.
+`tenantId` e `applicationId` são declarações verificadas contra a credencial, nunca a fonte de autoridade. Divergência resulta em 403. `trafficType` tem padrão `transactional`; novos eventos `marketing` retornam 422 `marketing_disabled`. O corpo é limitado a 32 KiB, inclusive durante leitura sem `Content-Length`. Campos extras no contrato são rejeitados. `user.welcome@1` exige `data.firstName` textual; `system.validation@1` exige `synthetic: true` e `purpose`; `system.delivery_test@1` exige `message`. Variáveis desconhecidas ou inválidas são rejeitadas, e todo texto é escapado no HTML.
 
 Resposta 202:
 
@@ -48,11 +49,11 @@ Resposta 202:
 | 202 | Persistido ou replay confirmado |
 | 400 | `invalid_json` / `invalid_body` |
 | 401 | `unauthorized`: credencial ausente, inválida, revogada, expirada ou escopo desativado |
-| 403 | `scope_mismatch` |
+| 403 | `scope_mismatch` / `recipient_not_authorized` |
 | 409 | `idempotency_conflict` / `event_id_conflict` |
 | 413 | `payload_too_large` |
 | 415 | `unsupported_media_type` |
-| 422 | `invalid_event`, apenas caminhos/códigos de validação |
+| 422 | `invalid_event`, `marketing_disabled`, `template_not_found`, `invalid_template_variables`, `provider_not_configured` ou `test_send_limit_reached` |
 | 503 | `service_unavailable`, sem aceite; repetir com backoff e mesma chave |
 
 Respostas usam `Cache-Control: no-store`; 503 inclui `Retry-After: 5`. Falhas de configuração, persistência, transação e commit não expõem SQL, tokens ou URLs.
@@ -61,22 +62,24 @@ Respostas usam `Cache-Control: no-store`; 503 inclui `Retry-After: 5`. Falhas de
 
 Migração cria `tenants`, `applications`, `application_credentials`, `events`, `outbox_messages`, `delivery_attempts`, `provider_webhook_events` e `audit_log`. Tabelas operacionais carregam `tenant_id` e `application_id`, com chaves e FKs compostas para impedir referências cruzadas. Índices de consulta incluem o escopo. Estados e contadores têm CHECKs; auditoria é protegida contra UPDATE/DELETE por triggers. A conta administrativa do banco continua capaz de alterar o schema; isso não equivale a armazenamento WORM.
 
-`payload_json` contém dados pessoais do evento e destinatário: restringir o acesso ao banco e definir retenção antes de uso real. A auditoria registra apenas ação, escopo, credencial e referência ao evento. Credenciais de ingestão são hashes de tokens aleatórios; BYOK Resend futuro exigirá armazenamento criptografado separado por tenant e não deve usar esta tabela para tokens recuperáveis.
+`payload_json` contém dados pessoais do evento e destinatário: restringir o acesso ao banco e definir retenção antes de uso real. A auditoria registra apenas ação, escopo, credencial e referência ao evento. Credenciais de ingestão são hashes de tokens aleatórios. Segredos BYOK ficam em `provider_configurations` com AES-256-GCM e contexto autenticado por tenant, aplicação, configuração e finalidade; não são armazenados na tabela de credenciais de ingestão.
 
-## Outbox e retry futuro
+## Outbox, processamento e status
 
-Uma mensagem por evento/canal começa em `pending`, sem nenhuma tentativa de entrega. `traffic_type` é preservado por FK e índice; o futuro worker deverá consumir filas `transactional` e `marketing` separadamente, sempre com escopo explícito, prioridade e limites próprios. Marketing ainda precisa de consentimento, opt-out, preferências e políticas antes de habilitar envio.
+Uma mensagem por evento/canal começa em `pending`, sem nenhuma tentativa de entrega. `message_deliveries` guarda configuração, versão de template, conteúdo e chave de envio congelados para retries. Marketing fica separado e desabilitado. O worker usa claim transacional, lease de 120 segundos, token de posse e até cinco tentativas, sem manter uma transação aberta durante a chamada ao Resend.
 
-Estados preparados: `pending`, `processing`, `retry_wait`, `sent`, `dead`, `cancelled`, `manual_review`. Campos `available_at`, `locked_until`, `attempt_count` e `max_attempts` permitem claims atômicos, leases e limites. Padrão: até cinco tentativas. A política em `src/lib/queue-policy.ts` define backoff exponencial desde 30 segundos com jitter, limitado a uma hora, apenas para falha transitória com não envio confirmado. Erro permanente esgota o trabalho; resultado ambíguo exige `manual_review`. Lease expirado não prova ausência de envio. O futuro worker deve usar a mesma chave de idempotência no provedor e reconciliar resultados ambíguos antes de tentar novamente. Não existe cron ou worker ativo nesta entrega.
+Estados da fila: `pending`, `processing`, `retry_wait`, `sent`, `dead`, `cancelled`, `manual_review`. Estado de entrega separado: `queued`, `dry_run`, `sent`, `delivered`, `bounced`, `complained`, `failed`, `suppressed`, `manual_review`. Uma simulação concluída marca a entrega `dry_run` e a fila `cancelled`, impedindo que uma troca posterior de modo envie a mensagem simulada. `sent` significa aceite do provedor; `delivered` depende de webhook assinado e indica entrega ao servidor destinatário, não leitura ou caixa de entrada.
 
-Webhooks têm identidade única por escopo/provedor/evento, mas seu endpoint e validação de assinatura ainda não foram implementados. Não inserir eventos externos como autenticados sem verificar assinatura e resolver o escopo no servidor.
+`GET /api/v1/events/<eventId>` usa a mesma credencial de aplicação e retorna somente o próprio escopo, com estado da fila/entrega, tentativas, código de erro e ID do provedor. Não retorna destinatário, corpo ou segredos. IDs de outro escopo retornam 404.
+
+`GET /api/internal/worker` é autenticado por `CRON_SECRET` e executa apenas dry-run, também agendado a cada cinco minutos na Vercel. `POST` no mesmo endpoint é uma operação de teste controlado, bloqueada por padrão; ver [DELIVERY.md](DELIVERY.md). `POST /api/webhooks/resend/<configurationId>` verifica assinatura Svix sobre os bytes originais, timestamp e contexto da configuração antes de persistir e processar o evento. Não aceita IDs de tenant/aplicação declarados no webhook como autoridade.
 
 ## Saúde e validação
 
-`GET /api/health` consulta o histórico real de migração e a presença das oito tabelas operacionais. Retorna 200 com `status: ready`, `ingestion: durable`, `delivery: disabled` apenas com schema disponível, ou 503 com estado indisponível. Nunca retorna credenciais, URL, nome de tenant ou payloads. Não é um monitor de entrega.
+`GET /api/health` consulta a migração `0002_delivery` e a presença das doze tabelas operacionais. Retorna 200 com `status: ready`, `ingestion: durable`, `delivery: dry_run`, `marketing: disabled`, ou 503 com estado indisponível. `delivery` descreve o processamento padrão do cron; a operação POST de teste tem autorização separada. Nunca retorna credenciais, URL, nome de tenant ou payloads. Não é um monitor de entrega.
 
 `npm test` usa libSQL/SQLite real em bancos temporários e clientes independentes para isolamento, autenticação, expiração, replay, conflito concorrente, rollback de outbox/auditoria, falha de commit, FKs e integridade, limites HTTP, migrações e health. Essas verificações locais não comprovam configuração ou acesso ao Turso remoto. A validação remota deve inspecionar o banco escolhido, aplicar migração e testar aceite/replay/conflito no ambiente publicado, sem chamar provedores de e-mail.
 
-`npm run smoke:ingestion -- http://127.0.0.1:3037` usa o banco de `.env.local` e testa uma instância HTTP iniciada com as mesmas variáveis. Para um ambiente publicado, carregar explicitamente o arquivo privado correspondente, por exemplo `node --env-file=.env.production.local --experimental-strip-types scripts/smoke-ingestion.ts https://todoku.com.br`. O comando exige health pronto e envio desativado, cria escopos sintéticos com credenciais temporárias, verifica 202/replay/409/403/401 e oito replays simultâneos, e confirma as contagens diretamente no Turso. Ao terminar, revoga as credenciais, desativa os tenants e cancela as mensagens de teste, preservando eventos e auditoria. Não executar contra ambiente com worker de envio habilitado. Para preview protegido, pode usar `VERCEL_OIDC_TOKEN` local, enviado apenas ao hostname Vercel escolhido.
+`npm run smoke:ingestion -- http://127.0.0.1:3037` usa o banco de `.env.local` e testa uma instância HTTP iniciada com as mesmas variáveis. Para um ambiente publicado, carregar explicitamente o arquivo privado correspondente, por exemplo `node --env-file=.env.production.local --experimental-strip-types scripts/smoke-ingestion.ts https://todoku.com.br`. O comando exige health pronto e modo padrão dry-run, cria escopos sintéticos com credenciais temporárias e configurações exclusivamente dry-run, verifica 202/replay/409/403/401 e oito replays simultâneos, e confirma as contagens diretamente no Turso. O cron pode simular essas mensagens durante o teste; nenhuma tentativa pode usar um provedor real. Ao terminar, revoga as credenciais, desativa os tenants e cancela as mensagens pendentes de teste, preservando eventos e auditoria. Para preview protegido, pode usar `VERCEL_OIDC_TOKEN` local, enviado apenas ao hostname Vercel escolhido.
 
-Consulte [OPERATIONS.md](OPERATIONS.md) para os bancos selecionados e a separação de ambientes.
+`npm run smoke:delivery -- <origem>` testa o fluxo completo de simulação no Turso real: ingestão, worker autenticado, estado consultável, tentativa e auditoria. Não constrói o adaptador Resend, revoga as credenciais temporárias e desativa o tenant ao final. Consulte [OPERATIONS.md](OPERATIONS.md) para o banco selecionado.
