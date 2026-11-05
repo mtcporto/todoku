@@ -11,7 +11,7 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 
 ---
 
-**Todoku Mail — MVP 1:** webmail em `/mail`, com login real, grants por identidade, caixa unificada, filtros, leitura segura, threads e anexos autenticados. O piloto está **pausado**, sem alteração de DNS ou recebimento externo; R2 e Resend Receiving aguardam provisionamento/aprovação. Veja [docs/MAIL.md](docs/MAIL.md) para arquitetura, acesso, testes, limites e próximos incrementos de forwarding/reply.
+**Todoku Mail — MVP 1:** webmail em `/mail`, com login real, grants por identidade, caixa unificada, filtros, leitura segura, threads e anexos autenticados. O piloto está **pausado**, sem alteração de DNS ou recebimento externo. R2 privado testado com PUT/GET/DELETE reais, chave restrita ao bucket e configuração de servidor Vercel pronta. Domínio/webhook Resend preparados; Receiving aguarda autorização explícita. Veja [docs/MAIL.md](docs/MAIL.md) e [preparação do piloto](docs/MAIL-ACTIVATION.md).
 
 ## 1. Fluxo Conceitual
 

@@ -1,6 +1,6 @@
 # Turso e publicação
 
-O módulo Mail adiciona a migração `0003_mail` no mesmo banco e o cron autenticado `/api/internal/mail-worker`. O piloto permanece pausado com `TODOKU_MAIL_RECEIVING_ENABLED=false` e storage desabilitado, aguardando provisionamento/aprovação de DNS. Setup e acesso privado: [MAIL.md](MAIL.md). Notifications continua bloqueado por `TODOKU_TEST_SEND_ENABLED=false`.
+O módulo Mail adiciona a migração `0003_mail` no mesmo banco e o cron autenticado `/api/internal/mail-worker`. O piloto permanece pausado com `TODOKU_MAIL_RECEIVING_ENABLED=false`. O storage foi configurado como `r2`: bucket privado `todoku-mail`, PUT/GET/DELETE reais aprovados e credencial restrita ao bucket, com acesso a outro bucket negado. As variáveis entram nos novos deployments GitHub/Vercel. Domínio e webhook Resend preparados sem Receiving/DNS. Estado preciso, lifecycle e reversão: [MAIL-ACTIVATION.md](MAIL-ACTIVATION.md). Setup e acesso privado: [MAIL.md](MAIL.md). Notifications continua bloqueado por `TODOKU_TEST_SEND_ENABLED=false`.
 
 Configuração inicial em 04/11/2026, na organização Turso `mtcporto`, grupo `default` (`aws-us-east-2`). O CLI está no WSL Ubuntu-24.04, em `/home/mtcporto/.local/bin/turso`, autenticado pela conta `mtcporto`. Verificar novamente autenticação e organização ao operar em outra sessão.
 

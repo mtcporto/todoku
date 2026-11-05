@@ -4,11 +4,11 @@ O Mail recebe e lê mensagens de identidades próprias em uma caixa unificada, s
 
 ## Estado verificado do piloto
 
-Em 04/11/2026, a inspeção confirmou banco único `todoku`, conta Resend acessível pelo CLI e R2 disponível na Cloudflare. `todoku.com.br` não está cadastrado no Resend; os dois domínios existentes estão com receiving desabilitado. R2 contém buckets de outros projetos, sem bucket Todoku ou credencial S3 de runtime configurada neste projeto. Nenhum desses recursos foi alterado ou reutilizado.
+Em 04/11/2026, o piloto usa o banco único `todoku`. O bucket R2 privado `todoku-mail` e o domínio/webhook Resend exclusivo foram provisionados na fase A da issue #12. Buckets e domínios de outros projetos não foram modificados ou reutilizados.
 
-O piloto tem cadastros preparatórios `contato@todoku.com.br` e `suporte@todoku.com.br`, com source, domínio e identidades **desativados**. A inbox publicada começa vazia. `TODOKU_MAIL_RECEIVING_ENABLED=false` e `TODOKU_MAIL_STORAGE=disabled` são explícitos nos ambientes Vercel. Notifications mantém `TODOKU_TEST_SEND_ENABLED=false`, marketing desabilitado e credenciais do teste anterior revogadas.
+O piloto tem cadastros preparatórios `contato@todoku.com.br` e `suporte@todoku.com.br`, com source, domínio e identidades **desativados**. A inbox publicada começa vazia. `TODOKU_MAIL_RECEIVING_ENABLED=false` e `TODOKU_MAIL_STORAGE=r2` são explícitos nos ambientes Vercel após o provisionamento da fase A. Notifications mantém `TODOKU_TEST_SEND_ENABLED=false`, marketing desabilitado e credenciais do teste anterior revogadas.
 
-Recebimento externo e persistência R2 real aguardam provisionamento/aprovação. O adaptador R2 foi testado com requests assinados capturados; **não houve upload remoto em produção**. Não se declara recebimento externo funcionando nesta etapa.
+**PUT/GET/DELETE remotos passaram com bytes sintéticos, eliminados ao final.** A credencial foi restrita ao bucket e configurada no servidor Vercel, com negação de acesso a outro bucket verificada. Receiving e o webhook continuam desativados; não se declara recebimento externo funcionando nesta etapa. Inventário DNS, prova remota, gate externo e reversão estão em [MAIL-ACTIVATION.md](MAIL-ACTIVATION.md).
 
 ## Arquitetura e processamento
 
@@ -76,10 +76,10 @@ Provisionamento grava senha aleatória somente em `.env.mail-access.local`, priv
 | `TODOKU_MASTER_KEYS`, `TODOKU_ACTIVE_MASTER_KEY` | Keyring AEAD existente |
 | `CRON_SECRET` | Credencial existente do worker |
 
-1. Obter aprovação explícita para DNS/receiving do piloto `todoku.com.br`. Outros domínios candidatos não são alterados; `imobiliariapenaareia.com.br` usa Google e está fora do escopo.
-2. Criar bucket R2 exclusivo, sem `r2.dev`, domínio público ou CORS público. Provisionar credencial S3 com read/write/delete apenas desse bucket. Verificar put/get/delete e retenção reais antes de conteúdo externo.
+1. Provisionar bucket R2 exclusivo, sem `r2.dev`, domínio público ou CORS público. Provisionar credencial S3 com read/write/delete apenas desse bucket. Executar `npm run smoke:mail:r2` para comprovar PUT/GET/DELETE remotos e verificar a configuração de retenção antes de conteúdo externo. Ver [estado e lifecycle](MAIL-ACTIVATION.md).
+2. Obter aprovação explícita para DNS/receiving do piloto `todoku.com.br`. Outros domínios candidatos não são alterados; `imobiliariapenaareia.com.br` usa Google e está fora do escopo. Provisionar R2 não depende dessa aprovação externa.
 3. Cadastrar/verificar somente o piloto no Resend e obter os registros exatos da conta/região; habilitar receiving após aprovação, sem copiar MX de exemplos.
-4. Registrar webhook dedicado na rota acima, inscrito somente em `email.received`. Capturar o signing secret em arquivo privado, sem imprimir resposta que contenha segredo.
+4. Registrar webhook dedicado na rota acima, inscrito somente em `email.received`, desativado até a ativação aprovada. Capturar o signing secret em arquivo privado, sem imprimir respostas de criação **ou consulta**, pois ambas podem conter o segredo.
 5. Confirmar credencial capaz de ler recebidos; uma chave sending-only não serve. Resend pode exigir acesso mais amplo para Receiving: não assumir isolamento de domínio no provedor. Todoku mantém BYOK por tenant e valida source/destinos.
 6. Executar `mail:source enable <tenant> <source-id>` com `TODOKU_MAIL_DNS_AUTHORIZED=true`, `RESEND_APPLICATION_KEY`, `RESEND_APPLICATION_WEBHOOK_SECRET` e `TODOKU_RESEND_DOMAIN_ID` no processo. O script exige domínio `verified`, `receiving=enabled` e escopo correto, criptografa segredos com AES-256-GCM/AAD `tenant/todoku-mail/source/finalidade`, mas não muda DNS ou flag global. `mail:source disable` bloqueia processamento desse source.
 7. Liberar `TODOKU_MAIL_RECEIVING_ENABLED=true` somente no ambiente aprovado, publicar por GitHub/Vercel e testar recebimento autorizado. Notifications continua bloqueado.
@@ -115,7 +115,7 @@ Testes automatizados usam SQLite temporário, transporte fake e memória, sem me
 
 O teste visual cria tenant isolado `.invalid` no mesmo banco de desenvolvimento, credenciais em `.env.mail-fixture.local` e arquivos ignorados em `.vercel/mail-fixtures/`. Verifica webhook assinado → job → worker → conteúdo sintético → storage de teste → API → navegador. Interface marcada **Demonstração local**. O modo é recusado na Vercel e não declara persistência permanente. Cleanup desativa tenant/usuário/source, revoga sessões, remove objetos e preserva auditoria.
 
-`smoke:mail` valida o ambiente publicado pausado com credenciais privadas: login, duas identidades, caixa vazia/autorizada, worker pausado, Notifications bloqueado e logout. Não envia/recebe mensagens externas; adaptar a expectativa de caixa vazia depois da ativação real.
+`smoke:mail` valida o ambiente publicado pausado com credenciais privadas: login, duas identidades, caixa vazia/autorizada, worker pausado, Notifications bloqueado e logout. A expectativa de storage vem de `TODOKU_MAIL_STORAGE` no processo do teste; usar o valor do ambiente publicado. Não envia/recebe mensagens externas; adaptar a expectativa de caixa vazia depois da ativação real.
 
 ## Próximos incrementos
 

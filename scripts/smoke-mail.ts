@@ -52,7 +52,7 @@ try {
   assert.equal(inbox.status, 200);
   const data = await inbox.json();
   assert.equal(data.receivingEnabled, false);
-  assert.equal(data.storageReady, false);
+  assert.equal(data.storageReady, process.env.TODOKU_MAIL_STORAGE === "r2");
   assert.equal(data.fixture, false);
   assert.equal(data.messages.length, 0);
   assert.equal(data.identities.length, 2);
@@ -86,7 +86,7 @@ try {
       identities: 2,
       privateInbox: true,
       receiving: "disabled",
-      storage: "unconfigured",
+      storage: process.env.TODOKU_MAIL_STORAGE === "r2" ? "r2" : "unconfigured",
       notifications: "blocked",
       externalMessages: 0,
     }),
