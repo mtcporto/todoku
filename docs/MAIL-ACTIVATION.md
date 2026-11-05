@@ -1,6 +1,22 @@
-# Preparação do piloto Mail — issue #12
+# Piloto Mail — preparação e ativação controlada, issue #12
 
-Estado em **04/11/2026 (America/Fortaleza)**. R2 provisionado, testado e configurado na fase A; as fases B/C exigem autorização explícita. Nenhum DNS foi alterado, nenhum e-mail externo foi enviado/recebido e Notifications continua bloqueado.
+## Ativação controlada autorizada em 05/11/2026
+
+O responsável autorizou concluir a fase C: ativar exclusivamente `contato@todoku.com.br`, sua source e o webhook dedicado `email.received`, publicar o processamento em Production e realizar **um único teste externo controlado**. A conta externa autorizada foi conferida antes do envio. Os resultados e o estado final serão registrados na [issue #12](https://github.com/mtcporto/todoku/issues/12), sem publicar credenciais ou conteúdo privado.
+
+- Domínio, DKIM e MX já verificados no Resend; **Sending permanece disabled**. Esta ativação não modifica DNS.
+- Chave BYOK e segredo do webhook já cifrados na source pelo mecanismo AES-256-GCM/AAD existente. Credenciais, banco único `todoku` e bucket privado `todoku-mail` são reutilizados.
+- Ativar somente a identidade `contato`; **`suporte@todoku.com.br` deve permanecer disabled**, preservando grants e retenção. Não usar o comando genérico `mail:source enable`, que ativa todas as identidades do domínio.
+- A alteração de `TODOKU_MAIL_RECEIVING_ENABLED` é restrita a **Production**. Preview e Development permanecem `false`. Publicação somente por commit/push → GitHub/Vercel, sem deploy manual duplicado.
+- O webhook permanece pausado até conferir o deployment automático e os controles de produção. Depois, habilitar somente o webhook dedicado e executar um único envio da conta externa autorizada para `contato`.
+- Validar Resend → webhook assinado → job/worker → Turso → R2 privado → inbox autenticada; verificar conteúdo/anexo sintéticos, replay/idempotência, auditoria e isolamento da identidade desativada. Notifications continua bloqueado.
+- Em falha significativa, pausar source e webhook imediatamente; voltar a flag Production para `false` pelo mesmo fluxo de publicação, preservando conteúdo e auditoria. Não alterar DNS nesta operação.
+
+Este commit registra a autorização e o procedimento de publicação; não antecipa sucesso do teste real. O fluxo completo em produção, inclusive a descriptografia no runtime, será comprovado durante a execução autorizada.
+
+## Histórico da fase A
+
+Snapshot em **04/11/2026 (America/Fortaleza)**, anterior às autorizações DNS e de ativação abaixo documentadas na issue. Nesse momento, R2 estava provisionado e testado; DNS e recebimento externo permaneciam inalterados. As seções seguintes preservam as evidências e os limites daquele snapshot, sem representar o estado vivo da fase C.
 
 ## R2 dedicado
 
