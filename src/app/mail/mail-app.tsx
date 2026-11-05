@@ -120,6 +120,7 @@ export default function MailApp() {
   const [folder, setFolder] = useState<Folder>("inbox");
   const [composer, setComposer] = useState<ComposerPreset | null>(null);
   const [acting, setActing] = useState(false);
+  const [sendNotice, setSendNotice] = useState("");
   const [readerIdentity, setReaderIdentity] = useState("");
   const selectedIdentity = readerIdentity || identity;
   function selectMessage(id: string, scope: string) {
@@ -128,7 +129,9 @@ export default function MailApp() {
   }
   const heading = useRef<HTMLHeadingElement>(null),
     reader = useRef<HTMLElement>(null);
+  const composeTrigger = useRef<HTMLButtonElement>(null);
   function signedOut() {
+    setSendNotice("");
     setUser(null);
     setInbox(emptyInbox);
     setSelected(null);
@@ -308,6 +311,7 @@ export default function MailApp() {
     reload();
   }
   function composeNew() {
+    setSendNotice("");
     const sender =
       inbox.identities.find(
         (item) =>
@@ -464,7 +468,7 @@ export default function MailApp() {
   ];
   return (
     <main className="mail-shell">
-      <aside className="mail-sidebar">
+      <aside className="mail-sidebar" inert={Boolean(composer)}>
         <a className="mail-brand" href="/">
           <span className="brand-mark">t</span>todoku
           <span className="brand-sub">mail</span>
@@ -524,7 +528,11 @@ export default function MailApp() {
           </button>
         </div>
       </aside>
-      <section className="mail-workspace" aria-label="Caixa de e-mail">
+      <section
+        className="mail-workspace"
+        aria-label="Caixa de e-mail"
+        inert={Boolean(composer)}
+      >
         <header className="mail-toolbar">
           <div>
             <span className="eyebrow">TODOKU MAIL</span>
@@ -537,7 +545,11 @@ export default function MailApp() {
             <p>Suas conversas, no mesmo lugar.</p>
           </div>
           <div className="toolbar-actions">
-            <button className="compose-button" onClick={composeNew}>
+            <button
+              className="compose-button"
+              onClick={composeNew}
+              ref={composeTrigger}
+            >
               Escrever
             </button>
             <span className="pilot-badge">
@@ -620,6 +632,11 @@ export default function MailApp() {
             {inbox.messages.length === 1 ? "mensagem" : "mensagens"}
           </span>
         </div>
+        {sendNotice ? (
+          <p className="composer-notice mail-send-notice" role="status">
+            {sendNotice}
+          </p>
+        ) : null}
         {error ? (
           <div className="mail-error" role="alert">
             {error}
@@ -949,10 +966,15 @@ export default function MailApp() {
           initial={composer}
           identities={inbox.identities}
           sendingEnabled={inbox.sendingEnabled}
+          fallbackFocus={composeTrigger}
           onClose={() => setComposer(null)}
           onSaved={(sent) => {
-            if (sent) openFolder("sent");
-            else {
+            if (sent) {
+              setSendNotice(
+                "Mensagem enfileirada. Acompanhe a confirmação do provedor e a entrega em Enviados.",
+              );
+              openFolder("sent");
+            } else {
               setSelected(null);
               reload();
             }

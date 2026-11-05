@@ -48,6 +48,8 @@ try {
     await dialog
       .getByLabel("Para", { exact: true })
       .fill("external@example.invalid");
+    await dialog.getByRole("button", { name: "Cc", exact: true }).click();
+    await dialog.getByRole("button", { name: "Cco", exact: true }).click();
     await dialog
       .getByLabel("Cc", { exact: true })
       .fill("carbon@example.invalid");
@@ -58,13 +60,11 @@ try {
     await dialog
       .getByLabel("Mensagem", { exact: true })
       .fill("Somente conteúdo sintético. Nenhum envio externo.");
-    await dialog
-      .getByLabel("Anexar arquivos")
-      .setInputFiles({
-        name: "sintetico.txt",
-        mimeType: "text/plain",
-        buffer: Buffer.from("fixture anexo"),
-      });
+    await dialog.getByLabel("Selecionar anexos").setInputFiles({
+      name: "sintetico.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("fixture anexo"),
+    });
     assert.equal(
       await dialog
         .getByRole("button", { name: "Enviar", exact: true })
@@ -137,6 +137,10 @@ try {
       (
         await dialog.getByLabel("Assunto", { exact: true }).inputValue()
       ).startsWith("Re:"),
+    );
+    assert.equal(
+      await dialog.getByLabel("Cco", { exact: true }).isVisible(),
+      false,
     );
     assert.equal(
       await dialog.getByLabel("Cco", { exact: true }).inputValue(),
