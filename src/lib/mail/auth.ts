@@ -82,7 +82,11 @@ export async function createMailSession(
   const token = randomBytes(32).toString("base64url");
   const result = await db.execute({
     sql: "INSERT INTO mail_sessions(token_hash,user_id,expires_at) SELECT ?,id,? FROM mail_users WHERE id=? AND status='active'",
-    args: [hash(token), new Date(Date.now() + 12 * 3_600_000).toISOString(), userId],
+    args: [
+      hash(token),
+      new Date(Date.now() + 12 * 3_600_000).toISOString(),
+      userId,
+    ],
   });
   if (result.rowsAffected !== 1) throw new MailError("unauthorized", 401);
   return cookie(request, token, 43_200);

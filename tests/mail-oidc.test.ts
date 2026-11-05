@@ -536,7 +536,11 @@ test("Google OIDC cannot claim another user's subject or replace an existing own
     });
     const first = await begin(f);
     assert.equal(sessionCookie(await first.callback()), undefined);
-    assert.equal((await f.db.execute("SELECT user_id FROM mail_auth_identities")).rows[0].user_id, "bob");
+    assert.equal(
+      (await f.db.execute("SELECT user_id FROM mail_auth_identities")).rows[0]
+        .user_id,
+      "bob",
+    );
     await f.db.execute("DELETE FROM mail_auth_identities");
     await f.db.execute({
       sql: "INSERT INTO mail_auth_identities(id,user_id,provider,issuer,subject,verified_email) VALUES ('owner-binding','alice','google',?,?,?)",
@@ -544,28 +548,47 @@ test("Google OIDC cannot claim another user's subject or replace an existing own
     });
     const second = await begin(f);
     assert.equal(sessionCookie(await second.callback()), undefined);
-    assert.equal((await f.db.execute("SELECT subject FROM mail_auth_identities")).rows[0].subject, "existing-different-subject");
-  } finally { f.close(); }
+    assert.equal(
+      (await f.db.execute("SELECT subject FROM mail_auth_identities")).rows[0]
+        .subject,
+      "existing-different-subject",
+    );
+  } finally {
+    f.close();
+  }
 });
 
 test("Google OIDC rechecks session revocation after the provider exchange and user suspension before sign-in", async () => {
   const f = await fixture();
   try {
-    const flow = await begin(f), fetcher = flow.options.fetcher;
+    const flow = await begin(f),
+      fetcher = flow.options.fetcher;
     flow.options.fetcher = async (url, init) => {
       const result = await fetcher(url, init);
-      if (url === "https://oauth2.googleapis.com/token") await f.db.execute("UPDATE mail_sessions SET revoked_at='2026-01-01' WHERE user_id='alice'");
+      if (url === "https://oauth2.googleapis.com/token")
+        await f.db.execute(
+          "UPDATE mail_sessions SET revoked_at='2026-01-01' WHERE user_id='alice'",
+        );
       return result;
     };
     await denied(f, await flow.callback());
-    assert.equal((await f.db.execute("SELECT action FROM mail_auth_audit_log")).rows[0].action, "oidc_denied");
+    assert.equal(
+      (await f.db.execute("SELECT action FROM mail_auth_audit_log")).rows[0]
+        .action,
+      "oidc_denied",
+    );
     await f.db.execute({
       sql: "INSERT INTO mail_auth_identities(id,user_id,provider,issuer,subject,verified_email) VALUES ('owner-binding','alice','google',?,?,?)",
       args: [issuer, "google-owner-sub", config.allowedEmail],
     });
-    const login = await begin(f, "start");await f.db.execute("UPDATE mail_users SET status='disabled' WHERE id='alice'");
+    const login = await begin(f, "start");
+    await f.db.execute(
+      "UPDATE mail_users SET status='disabled' WHERE id='alice'",
+    );
     assert.equal(sessionCookie(await login.callback()), undefined);
-  } finally { f.close(); }
+  } finally {
+    f.close();
+  }
 });
 
 test("Google OIDC blocks cross-origin starts, wrong methods, non-owner linking and invalid origins", async () => {

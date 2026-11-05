@@ -76,8 +76,9 @@ try {
         links++;
         assert.equal(request.method(), "POST");
         return route.fulfill({
-          status: 303,
-          headers: { location: origin + "/mail?authError=google" },
+          status: 200,
+          contentType: "text/plain",
+          body: "Synthetic provider handoff; no Google request is made.",
         });
       }
       if (url.pathname === "/api/mail/inbox")
@@ -123,6 +124,11 @@ try {
     await page
       .getByRole("button", { name: "Vincular Google", exact: true })
       .click();
+    await page.waitForURL(origin + "/api/mail/oidc/google/link");
+    // Navigate the synthetic callback explicitly. Playwright's fulfilled redirect
+    // does not re-run routing on protected previews, so it loses Trusted Sources.
+    // The protocol suite separately checks real 303 responses and callback state.
+    await page.goto(origin + "/mail?authError=google");
     await page
       .getByRole("alert")
       .filter({ hasText: "Não foi possível concluir o acesso Google" })
@@ -186,6 +192,8 @@ try {
   }
   const result = {
     checkedAt: new Date().toISOString(),
+    origin,
+    mockedMailApi: true,
     results,
     externalEmails: 0,
     liveGoogleLogin: false,
