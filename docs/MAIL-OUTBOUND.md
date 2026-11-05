@@ -1,6 +1,6 @@
 # Mail MVP 2 — operação e ativação
 
-A fase A da issue #15 implementa composição, respostas, encaminhamento, rascunhos, enviados e lixeira. **O envio externo permanece desativado.** A fase B exige autorização explícita antes de habilitar Sending, alterar DNS ou enviar qualquer mensagem. Notifications tem controles independentes e permanece bloqueado.
+A issue #15 implementou composição, respostas, encaminhamento, rascunhos, enviados e lixeira e validou o primeiro envio controlado. A fase 4 da issue #20 substitui as restrições temporárias de `contato` pela [política operacional de envio](MAIL-SENDING-POLICY.md). Notifications tem controles independentes e permanece bloqueado. O plano histórico das fases A/B abaixo não deve ser reexecutado para alterar uma política já provisionada.
 
 ## Modelo e permissões
 
@@ -39,7 +39,7 @@ Todos os seguintes controles precisam permitir envio:
 
 Sem a flag global, fila e webhook outbound recusam processamento, e o worker não consulta/descriptografa uma credencial de envio. Não existe fallback para a chave Full access de Receiving.
 
-Enfileirar move o snapshot imutável para Enviados com estado **Na fila**. A chave idempotente é estável por mensagem, com job único. O worker usa claim transacional, lease de seis minutos e fence de conclusão; revalida grants e allowlist antes do transporte. Um job por execução, máximo cinco tentativas, backoff exponencial com jitter. Timeout, 5xx e lease perdido são conservadores quanto à aceitação. Após 23 horas da primeira tentativa não há reenvio automático, respeitando a [janela de 24 horas do Resend](https://resend.com/docs/dashboard/emails/idempotency-keys).
+Enfileirar move o snapshot imutável para Enviados com estado **Na fila**. A chave idempotente é estável por mensagem, com job único. O worker usa claim transacional, lease de seis minutos e fence de conclusão; revalida grants e a política de destinatários antes do transporte. Um job por execução, máximo cinco tentativas, backoff exponencial com jitter. Timeout, 5xx e lease perdido são conservadores quanto à aceitação. Após 23 horas da primeira tentativa não há reenvio automático, respeitando a [janela de 24 horas do Resend](https://resend.com/docs/dashboard/emails/idempotency-keys).
 
 **Aceito pelo provedor** não significa **Entregue**. O webhook assinado dedicado `/api/webhooks/mail/sending/<identity-id>` trata `email.sent`, `email.delivered`, `email.failed`, `email.bounced`, `email.complained`, deduplica eventos e reconcilia eventos anteriores ao recibo. Registra o RFC Message-ID fornecido pelo Resend para thread de respostas inbound. Falhas ambíguas encerram em **Verificação necessária**; conferência manual no provedor precede qualquer resolução, sem criar outro job ou reenviar às cegas.
 

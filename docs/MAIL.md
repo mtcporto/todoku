@@ -121,11 +121,11 @@ O teste visual cria tenant isolado `.invalid` no mesmo banco de desenvolvimento,
 
 ## MVP 2 — composição e organização
 
-A fase A da issue #15 adiciona Escrever, respostas/encaminhamento, Rascunhos, Enviados e Lixeira com permissões por ação, conteúdo privado e fila idempotente. Sending permanece desativado e exige autorização própria. Consulte [operação, testes e plano de ativação](MAIL-OUTBOUND.md). O histórico acima descreve o MVP 1; o piloto Receiving já foi ativado e validado na issue #12, preservando Notifications bloqueado e `suporte` desativada.
+A issue #15 adicionou Escrever, respostas/encaminhamento, Rascunhos, Enviados e Lixeira e validou o envio controlado. Consulte [operação e testes](MAIL-OUTBOUND.md) e a [política de envio após o piloto](MAIL-SENDING-POLICY.md), da issue #20. O histórico acima descreve o MVP 1; Receiving já foi ativado e validado na issue #12, preservando Notifications bloqueado e `suporte` desativada.
 
 ## Próximos incrementos
 
-1. Autorizar a fase B de Sending do MVP 2 e executar o teste real controlado.
+1. Administração de usuários, caixas e políticas por domínio no MVP 3.
 2. Forwarding opcional por identidade, com autorização e proteção contra loops.
 3. Busca, etiquetas, regras e administração de usuários.
 5. SSO/MFA, antivírus e observabilidade agregada.
