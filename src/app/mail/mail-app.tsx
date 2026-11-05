@@ -569,11 +569,11 @@ export default function MailApp() {
           </span>
           <button
             onClick={logout}
-            className="icon-button"
+            className="secondary-button"
             aria-label="Sair"
             title="Sair"
           >
-            ↗
+            Sair
           </button>
         </div>
       </aside>
@@ -627,11 +627,11 @@ export default function MailApp() {
               ↻ <span>Atualizar</span>
             </button>
             <button
-              className="mobile-signout icon-button"
+              className="mobile-signout secondary-button"
               onClick={logout}
               aria-label="Sair"
             >
-              ↗
+              Sair
             </button>
           </div>
         </header>

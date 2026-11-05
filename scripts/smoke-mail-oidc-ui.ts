@@ -154,10 +154,12 @@ try {
       path: `.vercel/oidc-ui/linked-${name}.png`,
       fullPage: true,
     });
-    await page
+    const signout = page
       .getByRole("button", { name: "Sair", exact: true })
-      .filter({ visible: true })
-      .click();
+      .filter({ visible: true });
+    assert.equal((await signout.innerText()).trim(), "Sair");
+    await signout.focus();
+    await page.keyboard.press("Enter");
     await page.getByLabel("Usuário", { exact: true }).waitFor();
     enabled = false;
     await page.reload();
@@ -184,6 +186,7 @@ try {
       linkRequiresPost: true,
       failedLinkPreservesSession: true,
       linkedStatus: true,
+      explicitSignoutByKeyboard: true,
       disabledOrUnavailablePreservesPassword: true,
       horizontalOverflow: false,
       externalRequests: 0,
