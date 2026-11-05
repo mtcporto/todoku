@@ -102,6 +102,7 @@ const emptyInbox: Inbox = {
 export default function MailApp() {
   const [user, setUser] = useState<{ username: string } | null>(null),
     [checking, setChecking] = useState(true);
+  const [canAdminister, setCanAdminister] = useState(false);
   const [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [signing, setSigning] = useState(false),
@@ -168,6 +169,7 @@ export default function MailApp() {
     return () => controller.abort();
   }, [user?.username]);
   function signedOut() {
+    setCanAdminister(false);
     setSendNotice("");
     setUser(null);
     setInbox(emptyInbox);
@@ -180,7 +182,11 @@ export default function MailApp() {
     const controller = new AbortController();
     fetch("/api/mail/session", { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
-        if (response.ok) setUser((await response.json()).user);
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          setCanAdminister(data.administration?.canAdminister === true);
+        }
       })
       .catch(() => {})
       .finally(() => {
@@ -317,7 +323,9 @@ export default function MailApp() {
       setDomain("");
       setIdentity("");
       setCursor(null);
-      setUser((await session.json()).user);
+      const data = await session.json();
+      setUser(data.user);
+      setCanAdminister(data.administration?.canAdminister === true);
     } catch {
       setLoginError("Não foi possível entrar. Tente novamente.");
     } finally {
@@ -594,6 +602,11 @@ export default function MailApp() {
             <p>Suas conversas, no mesmo lugar.</p>
           </div>
           <div className="toolbar-actions">
+            {canAdminister ? (
+              <a className="secondary-button" href="/mail/admin">
+                Administração do Mail
+              </a>
+            ) : null}
             {googleAccess.canLink ? (
               <form action="/api/mail/oidc/google/link" method="post">
                 <button className="secondary-button" type="submit">

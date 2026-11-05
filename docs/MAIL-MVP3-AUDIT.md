@@ -1,5 +1,7 @@
 # MVP 3: auditoria de autenticação e administração
 
+> Entrega 4: a [auditoria de cobertura do painel](MAIL-ADMIN-PANEL.md) confirmou o escopo nas APIs existentes, sem complemento de backend. O diagnóstico histórico abaixo é preservado; quotas agregadas e UX de perfil/sessões continuam em entregas posteriores.
+
 > As entregas 1 e 2 foram publicadas pelas PRs #23/#24, em `85c17e7` e `37e20d4`: [autorização](MAIL-AUTHORIZATION.md) e [APIs administrativas](MAIL-ADMIN-API.md). A entrega 3 acrescenta [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md), com migração aditiva `0008`, para revisão em PR. O diagnóstico abaixo é histórico; painel e quotas agregadas continuam pendentes.
 
 Revisão de 05/11/2026 da [issue #20](https://github.com/mtcporto/todoku/issues/20), após as PRs #21 e #22. OIDC e política de envio estão entregues; administração multiusuário/multidomínio, quotas agregadas e usabilidade ainda precisam de entregas incrementais. O [plano de PRs](MAIL-MVP3-PLAN.md) descreve a proposta, sem implementação ou ampliação de permissões nesta auditoria.

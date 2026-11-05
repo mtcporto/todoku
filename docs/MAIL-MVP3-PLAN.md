@@ -1,5 +1,7 @@
 # MVP 3 — plano administrativo, quotas e usabilidade
 
+> Entregas 1–3 publicadas pelas PRs #23/#24/#25, com login Google do proprietário validado. A entrega 4 prepara o [painel administrativo do módulo Mail](MAIL-ADMIN-PANEL.md), reutilizando APIs existentes, sem nova migração ou alteração de produção. Permanece em PR para revisão; mutações de teste apenas em fixtures locais.
+
 > Entregas 1 e 2 publicadas pelas PRs #23/#24, em `85c17e7` e `37e20d4`. A entrega 3 implementa [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md), com migração aditiva `0008`, onboarding OIDC controlado e revogação pessoal de sessões. Permanece para revisão, sem merge ou criação remota de convites/usuários/grants durante a validação.
 
 > Plano aprovado pelo responsável. A PR 1 implementa [autorização e migração 0007](MAIL-AUTHORIZATION.md), incluindo bootstrap auditado pelo UUID e a pequena correção visual **Sair** antecipada da PR 7. As próximas entregas continuam separadas. Manter 20 mensagens/24h até orçamento agregado e contabilização por destinatário.

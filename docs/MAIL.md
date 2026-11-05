@@ -1,5 +1,7 @@
 # Todoku Mail — MVP 1
 
+> MVP 3, entrega 4: [painel administrativo do módulo Mail](MAIL-ADMIN-PANEL.md), em PR para revisão, sem publicação em produção. Todoku permanece o Communication Hub; o painel não implementa o futuro SSO independente.
+
 > MVP 3, entrega 2: [contrato das APIs administrativas](MAIL-ADMIN-API.md), separado de autenticação, conteúdo e provisionamento externo.
 
 > Atualização MVP 3: [autorização administrativa e conteúdo](MAIL-AUTHORIZATION.md) acrescenta `0007`, memberships, papéis por escopo, leitura explícita e autoria de rascunhos. O histórico do MVP 1 abaixo não representa o estado atual de ativação; consulte também o [plano incremental](MAIL-MVP3-PLAN.md).
