@@ -21,6 +21,16 @@ A política é revalidada na fila e no worker, antes de construir o transporte. 
 
 ## Administração e operação
 
+### Revisão de quotas do MVP 3 — proposta, não aplicada
+
+Consulta de 05/11/2026: Resend com 3/100 unidades diárias (1 enviada e 2 recebidas), 16/3.000 no ciclo mensal (14 enviadas e 2 recebidas), 10 requisições/segundo e 3/3 domínios. `contato` continua com quota de **20 mensagens em janela móvel de 24h**. A elevação para 50 está apenas em estudo.
+
+O contador atual do Todoku é de jobs/mensagens, não destinatários faturáveis. No Resend, cada destinatário Para/Cc/Cco conta separadamente; recebimento também consome a quota. A janela diária do provedor é o dia UTC, enquanto a quota atual da caixa é móvel. O ciclo mensal deve usar o `resets_at` informado pela API, não presumir o primeiro dia do mês. [Regras de quota](https://resend.com/docs/knowledge-base/account-quotas-and-limits).
+
+Proposta: consumo real da conta do provedor → orçamento da organização em unidades de destinatário → orçamento opcional de domínio → quota de mensagens da caixa → rate limit por usuário. Reservar unidades de destinatário atomicamente por job, inclusive sob concorrência, com idempotência e reconciliação de recebimento/consumo externo; não somar quotas de caixas como se fossem capacidade garantida. A indisponibilidade ou defasagem do snapshot deve aparecer no painel, com política conservadora para novas reservas. A API do provedor permanece a autoridade final, inclusive para consumo de outros produtos na mesma conta.
+
+Elevar para 50 é viável como limite de mensagens, sujeito ao orçamento agregado, mas não garante 50 entregas com múltiplos destinatários: 50 mensagens × 10 destinos podem consumir 500 unidades. A proposta é aplicar 50 somente na entrega de quotas agregadas, por `updateSendingPolicy`, com auditoria e sem alteração de plano. Ver o [plano de PRs](MAIL-MVP3-PLAN.md).
+
 O serviço interno `updateSendingPolicy` valida e atualiza somente esses três campos, por tenant/identidade, na mesma transação da auditoria `sending_policy_changed`, incluindo antes/depois. É idempotente e não altera credenciais, status ou grants. O futuro painel do MVP 3 pode reutilizá-lo após autenticar e autorizar um administrador de domínio. Não há endpoint público novo nem permissão administrativa implícita por `can_send`/`can_manage`.
 
 O CLI existente ganhou a operação `policy`. Exemplo PowerShell:

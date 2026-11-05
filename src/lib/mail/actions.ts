@@ -4,12 +4,8 @@ import { sameOrigin } from "./auth.ts";
 import { audit, body, json, MailError, transaction } from "./common.ts";
 import type { MailStorage } from "./storage.ts";
 import { composeTemplate, draftSchema, saveDraft } from "./drafts.ts";
-import {
-  identityGrant,
-  messageGrant,
-  outboundLimits,
-  rateLimit,
-} from "./outbound-common.ts";
+import { outboundLimits, rateLimit } from "./outbound-common.ts";
+import { manageMessage } from "./authorization.ts";
 import { queueMail } from "./send.ts";
 
 export async function mailActions(
@@ -61,15 +57,13 @@ export async function mailActions(
       202,
     );
   }
-  const message = await messageGrant(db, user, id, identity);
-  await identityGrant(db, user, identity, "manage");
+  const message = await manageMessage(db, user, id, identity);
   await rateLimit(db, String(message.tenant_id), user, "folder-write", 30);
   const input = z
     .strictObject({ confirm: z.boolean().optional() })
     .parse(JSON.parse(await body(request, 128)));
   await transaction(db, async (tx) => {
-    await identityGrant(tx, user, identity, "manage");
-    const current = await messageGrant(tx, user, id, identity);
+    const current = await manageMessage(tx, user, id, identity);
     const job = (
       await tx.execute({
         sql: "SELECT id FROM mail_send_jobs WHERE tenant_id=? AND message_id=? AND state IN ('pending','sending','retry_wait','manual_review')",

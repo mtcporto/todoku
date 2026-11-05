@@ -18,6 +18,7 @@
     "db:provider": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-provider.ts",
     "smoke:delivery": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-delivery.ts",
     "mail:provision": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/provision-mail.ts",
+    "mail:admin:bootstrap": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/bootstrap-mail-administrator.ts",
     "mail:password": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/rotate-mail-password.ts",
     "mail:source": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-mail-source.ts",
     "mail:sending": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-mail-sending.ts",

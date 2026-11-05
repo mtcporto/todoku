@@ -165,6 +165,7 @@ export async function queueMail(
   await rateLimit(db, tenant, user, "send", 5);
   await transaction(db, async (tx) => {
     await identityGrant(tx, user, identity, "send");
+    await messageGrant(tx, user, id, identity);
     const sending = await config(tx, tenant, identity);
     allowRecipients(content, sending);
     const old = (
@@ -419,6 +420,7 @@ export async function runMailSendWorker(
           ).rows[0];
           if (!owned) throw new MailError("lease_lost", 409);
           await identityGrant(tx, String(job.user_id), identity, "send");
+          await messageGrant(tx, String(job.user_id), id, identity);
           allowRecipients(content, await config(tx, tenant, identity));
           await tx.execute({
             sql: "UPDATE mail_send_jobs SET payload_hash=? WHERE tenant_id=? AND id=? AND lease_token=?",
