@@ -2,6 +2,7 @@ import { randomBytes, scrypt as derive, timingSafeEqual } from "node:crypto";
 import type { Client } from "@libsql/client";
 import { body, hash, json, MailError, transaction } from "./common.ts";
 import { z } from "zod";
+import { administrativeCapabilities } from "./admin-capabilities.ts";
 
 const scrypt = (password: string, salt: string) =>
   new Promise<Buffer>((resolve, reject) =>
@@ -59,7 +60,10 @@ export function sessionToken(request: Request) {
       ?.split("=")[1] ?? ""
   );
 }
-export async function requireUser(db: Client, request: Request) {
+export async function requireUser(
+  db: Pick<Client, "execute">,
+  request: Request,
+) {
   const token = sessionToken(request);
   if (!/^[a-zA-Z0-9_-]{43}$/.test(token))
     throw new MailError("unauthorized", 401);
@@ -96,8 +100,13 @@ export async function authRequest(
   request: Request,
   operation: "login" | "logout" | "session",
 ) {
-  if (operation === "session")
-    return json({ user: await requireUser(db, request) });
+  if (operation === "session") {
+    const user = await requireUser(db, request);
+    return json({
+      user,
+      administration: await administrativeCapabilities(db, user.id),
+    });
+  }
   sameOrigin(request);
   if (operation === "logout") {
     await db.execute({

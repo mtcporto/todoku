@@ -14,6 +14,7 @@ import { readerDocument } from "./content.ts";
 import { mailStorage, type MailStorage } from "./storage.ts";
 import { runMailWorker } from "./worker.ts";
 import { mailActions } from "./actions.ts";
+import { administrativeRequest } from "./admin-http.ts";
 import {
   mailboxFolder,
   messageGrant,
@@ -50,11 +51,13 @@ export async function mailRequest(
 ) {
   try {
     const [operation, id, action] = segments;
+    if (operation === "admin")
+      return await administrativeRequest(request, segments.slice(1), db);
     if (
       ["login", "logout", "session"].includes(operation) &&
       segments.length === 1
     ) {
-      if ((operation === "session") !== (request.method === "GET"))
+      if (request.method !== (operation === "session" ? "GET" : "POST"))
         return json({ error: "method_not_allowed" }, 405);
       return await authRequest(
         db,

@@ -1,5 +1,7 @@
 # Todoku Mail — MVP 1
 
+> MVP 3, entrega 2: [contrato das APIs administrativas](MAIL-ADMIN-API.md), separado de autenticação, conteúdo e provisionamento externo.
+
 > Atualização MVP 3: [autorização administrativa e conteúdo](MAIL-AUTHORIZATION.md) acrescenta `0007`, memberships, papéis por escopo, leitura explícita e autoria de rascunhos. O histórico do MVP 1 abaixo não representa o estado atual de ativação; consulte também o [plano incremental](MAIL-MVP3-PLAN.md).
 
 > O estado abaixo registra a implantação original do MVP 1. O fluxo real de envio e resposta foi validado na [issue #15](https://github.com/mtcporto/todoku/issues/15#issuecomment-6660956829). A primeira entrega do MVP 3 acrescenta [auditoria e proposta de migração](MAIL-MVP3-AUDIT.md) e [Google OIDC opcional](MAIL-GOOGLE-OIDC.md), mantendo o login atual e os limites de envio.
