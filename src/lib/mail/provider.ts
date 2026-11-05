@@ -10,6 +10,7 @@ export type InboundMessage = {
   received_for?: string[];
   cc: string[];
   bcc: string[];
+  reply_to?: string[];
   html: string | null;
   text: string | null;
   message_id: string | null;
@@ -45,6 +46,11 @@ const schema = z.object({
     .transform((x) => x ?? []),
   bcc: z
     .array(z.string())
+    .max(50)
+    .nullish()
+    .transform((x) => x ?? []),
+  reply_to: z
+    .array(z.string().max(320))
     .max(50)
     .nullish()
     .transform((x) => x ?? []),

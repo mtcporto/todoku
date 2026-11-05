@@ -14,7 +14,8 @@ const db = getDatabase(),
 const input = resolve(".vercel/mail-fixtures/input"),
   storage = resolve(".vercel/mail-fixtures/storage");
 try {
-  if (existsSync('.env.mail-fixture.local')) throw new Error('Clean the previous fixture before provisioning another');
+  if (existsSync(".env.mail-fixture.local"))
+    throw new Error("Clean the previous fixture before provisioning another");
   await mkdir(input, { recursive: true });
   await mkdir(storage, { recursive: true });
   const password = randomBytes(24).toString("base64url"),
@@ -119,7 +120,7 @@ try {
         args: [tenant, id, domain, `${local}@${localDomain}`, label],
       });
       await tx.execute({
-        sql: "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id) VALUES (?,?,?)",
+        sql: "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id,can_send,can_manage) VALUES (?,?,?,1,1)",
         args: [tenant, id, user],
       });
     }
@@ -131,6 +132,7 @@ try {
       TODOKU_MAIL_FIXTURE_DIRECTORY: storage,
       TODOKU_MAIL_FIXTURE_INPUT_DIRECTORY: input,
       TODOKU_MAIL_RECEIVING_ENABLED: "true",
+      TODOKU_MAIL_SENDING_ENABLED: "false",
       TODOKU_MAIL_ORIGIN: "http://127.0.0.1:3037",
       TODOKU_MAIL_USERNAME: `fixture-${source.slice(0, 8)}`,
       TODOKU_MAIL_PASSWORD: password,

@@ -20,11 +20,13 @@
     "mail:provision": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/provision-mail.ts",
     "mail:password": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/rotate-mail-password.ts",
     "mail:source": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-mail-source.ts",
+    "mail:sending": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/configure-mail-sending.ts",
     "mail:fixture": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/seed-mail-fixture.ts",
     "smoke:mail": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/smoke-mail.ts",
     "smoke:mail:r2": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.r2.local --experimental-strip-types scripts/smoke-mail-r2.ts",
     "dev:mail:fixture": "node scripts/dev-mail-fixture.mjs",
     "smoke:mail:browser": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/smoke-mail-browser.ts",
+    "smoke:mail:outbound:browser": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/smoke-mail-outbound-browser.ts",
     "mail:fixture:cleanup": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/cleanup-mail-fixture.ts"
   },
   "dependencies": {

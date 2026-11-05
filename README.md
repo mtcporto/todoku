@@ -70,7 +70,7 @@ flowchart TD
 3. **Etapa 3:** Camada multi-tenant com suporte completo ao modelo Bring Your Own Key (BYOK).
 4. **Etapa 4:** Motor de templates versionados, ingestão de webhooks, deduplicação e trilha de auditoria.
 
-**Trilha Mail:** MVP 1 com inbox protegida e pipeline inbound testado; ativação do piloto depende de storage privado e aprovação de DNS. Depois: forwarding opcional, reply/send identity, busca e organização. Detalhes em [docs/MAIL.md](docs/MAIL.md).
+**Trilha Mail:** Receiving do piloto validado em produção. MVP 2 adiciona composição, respostas, rascunhos e lixeira; envio externo segue bloqueado até autorização específica. Detalhes em [docs/MAIL.md](docs/MAIL.md) e [plano de Sending](docs/MAIL-OUTBOUND.md).
 5. **Etapa 5:** Painel administrativo para acompanhamento operacional, métricas de envio e configuração de tenants.
 
 ---
@@ -92,4 +92,4 @@ O Todoku foi planejado para atender como hub de comunicação do ecossistema de 
 
 - **Domínio oficial:** `todoku.com.br`
 - **DNS:** Gerenciado via Cloudflare.
-- **Segurança de E-mail:** Registros defensivos iniciais (SPF restritivo e MX nulo) mantidos até que a infraestrutura de envio e os registros de autenticação do Resend (DKIM, SPF e DMARC) sejam formalmente provisionados.
+- **Segurança de E-mail:** MX Receiving e DKIM do Resend verificados no piloto; SPF defensivo e DMARC preservados. Sending requer aprovação e revisão dos registros outbound exatos. Histórico em [docs/MAIL-ACTIVATION.md](docs/MAIL-ACTIVATION.md).

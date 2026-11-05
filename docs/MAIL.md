@@ -117,12 +117,15 @@ O teste visual cria tenant isolado `.invalid` no mesmo banco de desenvolvimento,
 
 `smoke:mail` valida o ambiente publicado pausado com credenciais privadas: login, duas identidades, caixa vazia/autorizada, worker pausado, Notifications bloqueado e logout. A expectativa de storage vem de `TODOKU_MAIL_STORAGE` no processo do teste; usar o valor do ambiente publicado. Não envia/recebe mensagens externas; adaptar a expectativa de caixa vazia depois da ativação real.
 
+## MVP 2 — composição e organização
+
+A fase A da issue #15 adiciona Escrever, respostas/encaminhamento, Rascunhos, Enviados e Lixeira com permissões por ação, conteúdo privado e fila idempotente. Sending permanece desativado e exige autorização própria. Consulte [operação, testes e plano de ativação](MAIL-OUTBOUND.md). O histórico acima descreve o MVP 1; o piloto Receiving já foi ativado e validado na issue #12, preservando Notifications bloqueado e `suporte` desativada.
+
 ## Próximos incrementos
 
-1. Provisionar R2 e aprovar/validar DNS e Resend Receiving do piloto.
+1. Autorizar a fase B de Sending do MVP 2 e executar o teste real controlado.
 2. Forwarding opcional por identidade, com autorização e proteção contra loops.
-3. Reply/send identity com autorização separada de envio.
-4. Busca, pastas, etiquetas, regras e administração de usuários.
+3. Busca, etiquetas, regras e administração de usuários.
 5. SSO/MFA, antivírus e observabilidade agregada.
 
 Fontes: [webhook e payload](https://resend.com/docs/dashboard/receiving/create-receiving-webhook), [conteúdo/MIME real](https://resend.com/docs/api-reference/emails/retrieve-received-email), [anexos](https://resend.com/docs/api-reference/emails/retrieve-received-email-attachment), [R2 com aws4fetch](https://developers.cloudflare.com/r2/examples/aws/aws4fetch/).

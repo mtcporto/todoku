@@ -1,0 +1,42 @@
+﻿{
+    "checkedAt":  "2026-11-05T04:40:03.595Z",
+    "results":  [
+                    {
+                        "viewport":  "desktop",
+                        "width":  1440,
+                        "height":  960,
+                        "compose":  true,
+                        "draftReopened":  true,
+                        "privateAttachment":  true,
+                        "bccPreservedInOwnDraft":  true,
+                        "replyAll":  true,
+                        "forward":  true,
+                        "trash":  true,
+                        "restore":  true,
+                        "purgeConfirmed":  true,
+                        "sendDisabled":  true,
+                        "horizontalOverflow":  false
+                    },
+                    {
+                        "viewport":  "mobile",
+                        "width":  390,
+                        "height":  844,
+                        "compose":  true,
+                        "draftReopened":  true,
+                        "privateAttachment":  true,
+                        "bccPreservedInOwnDraft":  true,
+                        "replyAll":  true,
+                        "forward":  true,
+                        "trash":  true,
+                        "restore":  true,
+                        "purgeConfirmed":  true,
+                        "sendDisabled":  true,
+                        "horizontalOverflow":  false
+                    }
+                ],
+    "pageErrors":  0,
+    "externalContentRequests":  0,
+    "externalEmails":  0,
+    "integrationTests":  71,
+    "fixtureCleanup":  "tenant/source/users disabled; sessions revoked; objects deleted; audit retained"
+}
