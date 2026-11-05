@@ -1,5 +1,12 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 
 type FileItem = {
   existingId?: string;
@@ -63,12 +70,14 @@ export default function MailComposer({
   sendingEnabled,
   onClose,
   onSaved,
+  fallbackFocus,
 }: {
   initial: ComposerPreset;
   identities: Sender[];
   sendingEnabled: boolean;
   onClose: () => void;
   onSaved: (sent: boolean) => void;
+  fallbackFocus: RefObject<HTMLButtonElement | null>;
 }) {
   const [draftId, setDraftId] = useState(initial.id),
     [version, setVersion] = useState(initial.version),
@@ -82,10 +91,17 @@ export default function MailComposer({
     [html, setHtml] = useState(initial.html),
     [format, setFormat] = useState(initial.html ? "html" : "text"),
     [files, setFiles] = useState(initial.attachments);
-  const [busy, setBusy] = useState(false),
+  const [operation, setOperation] = useState<
+      "saving" | "sending" | "attaching" | null
+    >(null),
     [dirty, setDirty] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
+    [error, setError] = useState("");
+  const [showCc, setShowCc] = useState(initial.cc.length > 0),
+    [showBcc, setShowBcc] = useState(initial.bcc.length > 0);
+  const working = useRef(false),
+    fileInput = useRef<HTMLInputElement>(null),
+    backdrop = useRef<HTMLDivElement>(null);
+  const busy = operation !== null;
   const title = useRef<HTMLHeadingElement>(null),
     dialog = useRef<HTMLDivElement>(null),
     previousFocus = useRef<HTMLElement | null>(null);
@@ -99,12 +115,47 @@ export default function MailComposer({
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = old;
-      previousFocus.current?.focus();
+      if (
+        previousFocus.current?.isConnected &&
+        !previousFocus.current.matches(":disabled")
+      )
+        previousFocus.current.focus();
+      else fallbackFocus.current?.focus();
+    };
+  }, [fallbackFocus]);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    function fitViewport() {
+      backdrop.current?.style.setProperty(
+        "--composer-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+      backdrop.current?.style.setProperty(
+        "--composer-top",
+        `${viewport?.offsetTop ?? 0}px`,
+      );
+    }
+    fitViewport();
+    viewport?.addEventListener("resize", fitViewport);
+    viewport?.addEventListener("scroll", fitViewport);
+    window.addEventListener("resize", fitViewport);
+    return () => {
+      viewport?.removeEventListener("resize", fitViewport);
+      viewport?.removeEventListener("scroll", fitViewport);
+      window.removeEventListener("resize", fitViewport);
     };
   }, []);
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const protect = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", protect);
+    return () => window.removeEventListener("beforeunload", protect);
+  }, [dirty, busy]);
+  useEffect(() => {
+    if (busy) title.current?.focus({ preventScroll: true });
+  }, [busy]);
   function change() {
     setDirty(true);
-    setNotice("");
     setError("");
   }
   function close() {
@@ -114,7 +165,7 @@ export default function MailComposer({
     )
       onClose();
   }
-  function keyDown(event: React.KeyboardEvent) {
+  function keyDown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       event.preventDefault();
       close();
@@ -122,10 +173,14 @@ export default function MailComposer({
     if (event.key === "Tab") {
       const nodes = Array.from(
         dialog.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]',
+          'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]:not(:disabled)',
         ) ?? [],
       ).filter((x) => x.offsetParent !== null);
-      if (!nodes.length) return;
+      if (!nodes.length) {
+        event.preventDefault();
+        title.current?.focus();
+        return;
+      }
       const first = nodes[0],
         last = nodes.at(-1)!;
       if (
@@ -191,24 +246,28 @@ export default function MailComposer({
       ),
     );
     setDirty(false);
-    setNotice("Rascunho salvo.");
     onSaved(false);
     return result;
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
+    if (working.current) return;
+    working.current = true;
+    setOperation("saving");
     setError("");
     try {
       await save();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao salvar.");
     } finally {
-      setBusy(false);
+      working.current = false;
+      setOperation(null);
     }
   }
   async function send() {
-    setBusy(true);
+    if (working.current || !ready) return;
+    working.current = true;
+    setOperation("sending");
     setError("");
     try {
       const draft = await save();
@@ -227,12 +286,14 @@ export default function MailComposer({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao enviar.");
     } finally {
-      setBusy(false);
+      working.current = false;
+      setOperation(null);
     }
   }
   async function addFiles(list: FileList | null) {
-    if (!list) return;
-    setBusy(true);
+    if (!list?.length || working.current) return;
+    working.current = true;
+    setOperation("attaching");
     setError("");
     try {
       const selected = Array.from(list);
@@ -266,22 +327,23 @@ export default function MailComposer({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao anexar.");
     } finally {
-      setBusy(false);
+      working.current = false;
+      setOperation(null);
     }
   }
   return (
-    <div className="composer-backdrop">
+    <div className="composer-backdrop" ref={backdrop}>
       <div
         className="mail-composer"
         role="dialog"
         aria-modal="true"
         aria-labelledby="composer-title"
+        aria-busy={busy}
         ref={dialog}
         onKeyDown={keyDown}
       >
         <header>
           <div>
-            <span className="eyebrow">TODOKU MAIL</span>
             <h2 id="composer-title" ref={title} tabIndex={-1}>
               {draftId ? "Editar rascunho" : "Nova mensagem"}
             </h2>
@@ -296,165 +358,274 @@ export default function MailComposer({
           </button>
         </header>
         <form onSubmit={submit}>
-          <fieldset disabled={busy} onChange={change}>
-            <label>
-              De
-              <select
-                aria-label="Identidade remetente"
-                value={identity}
-                onChange={(e) => setIdentity(e.target.value)}
-                disabled={Boolean(draftId) || !senders.length}
-              >
-                <option value="">Selecione uma identidade</option>
-                {senders.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.address}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {!senders.length ? (
-              <p role="status" className="composer-note">
-                Seu acesso ainda não possui uma identidade autorizada para
-                compor.
-              </p>
-            ) : !ready ? (
-              <p className="composer-note">
-                Envio externo pausado. Você pode preparar e salvar rascunhos.
-              </p>
-            ) : null}
-            <label>
-              Para
-              <input
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                placeholder="destinatario@exemplo.com"
-                autoComplete="off"
-              />
-            </label>
-            <div className="composer-columns">
-              <label>
-                Cc
-                <input
-                  value={cc}
-                  onChange={(e) => setCc(e.target.value)}
-                  autoComplete="off"
-                />
+          <div className="composer-scroll">
+            <fieldset
+              disabled={busy}
+              onChange={(event) => {
+                if (
+                  !(
+                    event.target instanceof HTMLInputElement &&
+                    event.target.type === "file"
+                  )
+                )
+                  change();
+              }}
+            >
+              <label className="composer-address">
+                De
+                <select
+                  aria-label="Identidade remetente"
+                  value={identity}
+                  onChange={(e) => setIdentity(e.target.value)}
+                  disabled={Boolean(draftId) || !senders.length}
+                >
+                  <option value="">Selecione uma identidade</option>
+                  {senders.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.address}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <label>
-                Cco
-                <input
-                  value={bcc}
-                  onChange={(e) => setBcc(e.target.value)}
-                  autoComplete="off"
-                />
-              </label>
-            </div>
-            <small>
-              Separe endereços por vírgula. Até 10 destinatários no total.
-            </small>
-            <label>
-              Assunto
-              <input
-                value={subject}
-                maxLength={1000}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </label>
-            <label>
-              Formato
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-              >
-                <option value="text">Texto simples</option>
-                <option value="html">HTML seguro</option>
-              </select>
-            </label>
-            <label>
-              Mensagem
-              <textarea
-                aria-label="Mensagem"
-                value={format === "html" ? html : text}
-                maxLength={256 * 1024}
-                rows={10}
-                onChange={(e) =>
-                  format === "html"
-                    ? setHtml(e.target.value)
-                    : setText(e.target.value)
-                }
-              />
-            </label>
-            {format === "html" ? (
-              <small>
-                Scripts, estilos, links ativos e imagens serão removidos ao
-                salvar.
-              </small>
-            ) : null}
-            <label>
-              Anexar arquivos
-              <input
-                type="file"
-                multiple
-                accept=".txt,.csv,.pdf,.png,.jpg,.jpeg,.zip,.docx,.xlsx"
-                onChange={(e) => {
-                  void addFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <small>
-              Até 5 arquivos e 2 MiB somados. Arquivos não são verificados por
-              antivírus.
-            </small>
-            <ul className="composer-files">
-              {files.map((file, index) => (
-                <li key={file.existingId ?? index}>
-                  <span>
-                    {file.filename} · {Math.ceil(file.size / 1024)} KB
-                  </span>
+              <div className="composer-recipient-row">
+                <label className="composer-address">
+                  Para
+                  <input
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    placeholder="destinatario@exemplo.com"
+                    autoComplete="off"
+                    aria-describedby="composer-recipient-help"
+                  />
+                </label>
+                <div className="composer-recipient-toggles">
                   <button
                     type="button"
-                    aria-label={`Remover ${file.filename}`}
-                    onClick={() => {
-                      setFiles((previous) =>
-                        previous.filter((_, i) => i !== index),
-                      );
-                      change();
-                    }}
+                    aria-expanded={showCc}
+                    aria-controls="composer-cc"
+                    onClick={() => setShowCc((value) => !value)}
                   >
-                    Remover
+                    Cc{!showCc && cc.trim() ? ` (${addresses(cc).length})` : ""}
                   </button>
-                </li>
-              ))}
-            </ul>
-          </fieldset>
-          {error ? (
-            <p className="mail-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="composer-notice" role="status">
-              {notice}
-            </p>
-          ) : null}
+                  <button
+                    type="button"
+                    aria-expanded={showBcc}
+                    aria-controls="composer-bcc"
+                    onClick={() => setShowBcc((value) => !value)}
+                  >
+                    Cco
+                    {!showBcc && bcc.trim()
+                      ? ` (${addresses(bcc).length})`
+                      : ""}
+                  </button>
+                </div>
+              </div>
+              <div className="composer-columns">
+                <label
+                  id="composer-cc"
+                  className="composer-address"
+                  hidden={!showCc}
+                >
+                  Cc
+                  <input
+                    value={cc}
+                    onChange={(e) => setCc(e.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label
+                  id="composer-bcc"
+                  className="composer-address"
+                  hidden={!showBcc}
+                >
+                  Cco
+                  <input
+                    value={bcc}
+                    onChange={(e) => setBcc(e.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+              <small
+                id="composer-recipient-help"
+                className="composer-recipient-help"
+              >
+                Separe endereços por vírgula. Até 10 destinatários no total.
+              </small>
+              <label className="composer-subject">
+                Assunto
+                <input
+                  value={subject}
+                  maxLength={1000}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+              </label>
+              <label className="composer-format">
+                Formato
+                <select
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                >
+                  <option value="text">Texto simples</option>
+                  <option value="html">HTML seguro</option>
+                </select>
+              </label>
+              <label className="composer-editor">
+                Mensagem
+                <textarea
+                  aria-label="Mensagem"
+                  value={format === "html" ? html : text}
+                  maxLength={256 * 1024}
+                  rows={10}
+                  onChange={(e) =>
+                    format === "html"
+                      ? setHtml(e.target.value)
+                      : setText(e.target.value)
+                  }
+                />
+              </label>
+              {format === "html" ? (
+                <small>
+                  Scripts, estilos, links ativos e imagens serão removidos ao
+                  salvar.
+                </small>
+              ) : null}
+              <section
+                className="composer-attachments"
+                aria-labelledby="composer-attachments-title"
+              >
+                <div className="composer-attachment-heading">
+                  <h3 id="composer-attachments-title">
+                    Anexos <span>{files.length}/5</span>
+                  </h3>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    Anexar arquivos
+                  </button>
+                </div>
+                <label className="composer-file-input">
+                  Selecionar anexos
+                  <input
+                    type="file"
+                    ref={fileInput}
+                    multiple
+                    accept=".txt,.csv,.pdf,.png,.jpg,.jpeg,.zip,.docx,.xlsx"
+                    onChange={(e) => {
+                      void addFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <small>
+                  Até 5 arquivos e 2 MiB somados. Arquivos não são verificados
+                  por antivírus.
+                </small>
+                {files.length ? (
+                  <ul className="composer-files">
+                    {files.map((file, index) => (
+                      <li key={file.existingId ?? index}>
+                        <span className="composer-file-icon" aria-hidden="true">
+                          ↗
+                        </span>
+                        <span className="composer-file-info">
+                          <strong>{file.filename}</strong>
+                          <small>
+                            {file.size < 1024
+                              ? `${file.size} B`
+                              : `${Math.ceil(file.size / 1024)} KiB`}
+                          </small>
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Remover ${file.filename}`}
+                          onClick={() => {
+                            setFiles((previous) =>
+                              previous.filter((_, i) => i !== index),
+                            );
+                            change();
+                          }}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="composer-files-empty">
+                    Nenhum arquivo anexado.
+                  </p>
+                )}
+                {files.length ? (
+                  <small>
+                    {Math.ceil(
+                      files.reduce((sum, file) => sum + file.size, 0) / 1024,
+                    )}{" "}
+                    KiB de 2 MiB utilizados.
+                  </small>
+                ) : null}
+              </section>
+            </fieldset>
+          </div>
           <footer>
-            <button
-              className="secondary-button"
-              type="submit"
-              disabled={busy || !sender}
+            <div
+              className="composer-feedback"
+              aria-live="polite"
+              aria-atomic="true"
             >
-              {busy ? "Aguarde…" : "Salvar rascunho"}
-            </button>
-            <button
-              className="compose-button"
-              type="button"
-              onClick={send}
-              disabled={busy || !ready}
-            >
-              Enviar
-            </button>
+              <span className="composer-save-state">
+                {operation === "saving"
+                  ? "Salvando rascunho…"
+                  : operation === "sending"
+                    ? "Preparando envio…"
+                    : operation === "attaching"
+                      ? "Lendo anexos…"
+                      : dirty
+                        ? "Alterações pendentes"
+                        : draftId
+                          ? "Rascunho salvo."
+                          : "Novo rascunho"}
+              </span>
+              {!senders.length ? (
+                <p className="composer-note">
+                  Seu acesso ainda não possui uma identidade autorizada para
+                  compor.
+                </p>
+              ) : !ready ? (
+                <p className="composer-note">
+                  Envio externo pausado. Você pode salvar rascunhos.
+                </p>
+              ) : (
+                <p className="composer-note">
+                  Ao enviar, a mensagem entra na fila. Acompanhe o envio e a
+                  entrega em Enviados.
+                </p>
+              )}
+              {error ? (
+                <p className="mail-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+            <div className="composer-footer-actions">
+              <button
+                className="secondary-button"
+                type="submit"
+                disabled={busy || !sender}
+              >
+                {operation === "saving" ? "Salvando…" : "Salvar rascunho"}
+              </button>
+              <button
+                className="compose-button"
+                type="button"
+                onClick={send}
+                disabled={busy || !ready}
+              >
+                {operation === "sending" ? "Enfileirando…" : "Enviar"}
+              </button>
+            </div>
           </footer>
         </form>
       </div>

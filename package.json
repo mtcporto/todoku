@@ -27,6 +27,7 @@
     "dev:mail:fixture": "node scripts/dev-mail-fixture.mjs",
     "smoke:mail:browser": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/smoke-mail-browser.ts",
     "smoke:mail:outbound:browser": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/smoke-mail-outbound-browser.ts",
+    "smoke:mail:composer": "node --experimental-strip-types scripts/smoke-mail-composer-ux.ts",
     "mail:fixture:cleanup": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/cleanup-mail-fixture.ts"
   },
   "dependencies": {

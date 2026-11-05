@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-11-05T13:33:47.792Z",
+  "origin": "http://127.0.0.1:3039",
+  "mockedMailApi": true,
+  "results": [
+    {
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 960,
+      "pausedSending": true,
+      "collapsibleRecipients": true,
+      "draftReopened": true,
+      "bccPreserved": true,
+      "attachmentRemoval": true,
+      "oversizedFileRejected": true,
+      "fixedFooter": true,
+      "reducedViewport": true,
+      "dirtyDismissalProtected": true,
+      "focusTrap": true,
+      "focusTrapWhileSaving": true,
+      "returnFocusAfterOpenerUnmounts": true,
+      "beforeUnloadProtection": true,
+      "queueFailurePreservesDraft": true,
+      "duplicateSubmitBlocked": true,
+      "queueNotDelivery": true,
+      "actualExternalEmails": 0
+    },
+    {
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "pausedSending": true,
+      "collapsibleRecipients": true,
+      "draftReopened": true,
+      "bccPreserved": true,
+      "attachmentRemoval": true,
+      "oversizedFileRejected": true,
+      "fixedFooter": true,
+      "reducedViewport": true,
+      "dirtyDismissalProtected": true,
+      "focusTrap": true,
+      "focusTrapWhileSaving": true,
+      "returnFocusAfterOpenerUnmounts": true,
+      "beforeUnloadProtection": true,
+      "queueFailurePreservesDraft": true,
+      "duplicateSubmitBlocked": true,
+      "queueNotDelivery": true,
+      "actualExternalEmails": 0
+    }
+  ],
+  "limitation": "Viewport reduction tested; actual mobile OS keyboard requires device verification."
+}
