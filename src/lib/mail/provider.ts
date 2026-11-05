@@ -103,6 +103,7 @@ export class ResendInbound implements InboundProvider {
       url.username ||
       url.password ||
       !(
+        url.hostname === "cdn.resend.app" ||
         url.hostname === "inbound-cdn.resend.com" ||
         /^[a-z0-9-]+\.cloudfront\.net$/.test(url.hostname)
       )

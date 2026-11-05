@@ -1091,6 +1091,54 @@ test("Resend Inbound SDK fetches content and expiring attachment URLs server-sid
   }
 });
 
+test("Resend Inbound accepts the live Receiving CDN while rejecting lookalikes, credentials, ports and redirects", async () => {
+  const original = globalThis.fetch;
+  const value = message({
+    raw: { download_url: "https://cdn.resend.app/receiving/raw/fixture" },
+  });
+  const downloads: { url: string; redirect: string | undefined }[] = [];
+  let redirect = false;
+  try {
+    globalThis.fetch = async (input, options) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.startsWith("https://api.resend.com/"))
+        return Response.json(url.includes("/attachments/") ? {
+          id: value.attachments[0].id,
+          size: 4,
+          download_url: "https://cdn.resend.app/receiving/attachments/fixture",
+        } : value);
+      downloads.push({ url, redirect: options?.redirect });
+      assert.ok(options?.signal);
+      return redirect
+        ? new Response(null, { status: 302, headers: { location: "http://127.0.0.1/private" } })
+        : new Response(url.includes("/attachments/") ? "test" : "raw");
+    };
+    const adapter = new ResendInbound("re_fixture");
+    const received = await adapter.get(value.id);
+    assert.equal(Buffer.from(await adapter.raw(received)).toString(), "raw");
+    assert.equal(Buffer.from(await adapter.attachment(value.id, value.attachments[0].id)).toString(), "test");
+    for (const url of [
+      "https://cdn.resend.app.evil.invalid/raw",
+      "https://cdn-resend.app/raw",
+      "https://user:password@cdn.resend.app/raw",
+      "https://cdn.resend.app:444/raw",
+      "http://cdn.resend.app/raw",
+      "https://127.0.0.1/raw",
+    ]) {
+      const before = downloads.length;
+      await assert.rejects(adapter.raw({ ...value, raw: { download_url: url } }));
+      assert.equal(downloads.length, before);
+    }
+    redirect = true;
+    const before = downloads.length;
+    await assert.rejects(adapter.raw(received));
+    assert.equal(downloads.length, before + 1);
+    assert.ok(downloads.every(call => call.redirect === "error"));
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("Mail paginates tied timestamps without loss and read mutations require same-origin identity access", async () => {
   const f = await fixture();
   try {

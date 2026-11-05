@@ -14,6 +14,12 @@ O responsável autorizou concluir a fase C: ativar exclusivamente `contato@todok
 
 Este commit registra a autorização e o procedimento de publicação; não antecipa sucesso do teste real. O fluxo completo em produção, inclusive a descriptografia no runtime, será comprovado durante a execução autorizada.
 
+### Host real de download no primeiro teste
+
+A API autenticada de Receiving retornou `https://cdn.resend.app` tanto para o MIME original quanto para o anexo do único e-mail controlado. O CNAME desse host aponta para CloudFront. A lista original aceitava `inbound-cdn.resend.com` e hosts CloudFront diretos; o download foi corretamente bloqueado antes de acessar um host ainda não revisado. Source, identidades e webhook foram pausados, preservando o mesmo job e sua auditoria de falha.
+
+A correção admite **somente o host adicional exato `cdn.resend.app`**, mantendo HTTPS, rejeição de credenciais/portas não padrão, redirects bloqueados, timeout e limites de bytes. Há regressão para MIME e anexo nesse host e para hosts semelhantes maliciosos, HTTP, IP local, credenciais, porta e redirect. Após a publicação automática da correção, reprocessar o **mesmo job/e-mail**, com auditoria, sem enviar outra mensagem ou criar outro ID para contornar a deduplicação. O resultado final permanece registrado na issue.
+
 ## Histórico da fase A
 
 Snapshot em **04/11/2026 (America/Fortaleza)**, anterior às autorizações DNS e de ativação abaixo documentadas na issue. Nesse momento, R2 estava provisionado e testado; DNS e recebimento externo permaneciam inalterados. As seções seguintes preservam as evidências e os limites daquele snapshot, sem representar o estado vivo da fase C.
