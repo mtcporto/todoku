@@ -1,6 +1,6 @@
 # Preparação do piloto Mail — issue #12
 
-Estado em **04/11/2026 (America/Fortaleza)**. A fase A está em preparação; as fases B/C exigem autorização explícita. Nenhum DNS foi alterado, nenhum e-mail externo foi enviado/recebido e Notifications continua bloqueado.
+Estado em **04/11/2026 (America/Fortaleza)**. R2 provisionado, testado e configurado na fase A; as fases B/C exigem autorização explícita. Nenhum DNS foi alterado, nenhum e-mail externo foi enviado/recebido e Notifications continua bloqueado.
 
 ## R2 dedicado
 
@@ -8,18 +8,18 @@ Estado em **04/11/2026 (America/Fortaleza)**. A fase A está em preparação; as
 - Acesso `r2.dev` explicitamente desativado, lista de domínios customizados vazia e CORS inexistente (API retorna 404 para configuração ausente).
 - Lifecycle `mail-private-retention-backstop`, somente prefixo `mail/`: expiração por idade de **91 dias** (`7862400` segundos) e aborto de uploads multipart incompletos após **24h**.
 - A aplicação continua usando expiração lógica de 30 dias por padrão, configurável entre 1–90 dias, e coleta de uploads incompletos após 24h. O lifecycle é uma proteção contra órfãos; os 91 dias evitam remover conteúdo antes do maior prazo permitido. A execução da regra pelo provedor não é instantânea. Não representa um teste de exclusão após 91 dias.
-- **Pendente:** restringir a credencial S3 fornecida pelo operador somente a este bucket. A chave funcionou no teste, mas também permitiu consulta em outro bucket da conta. A verificação usou listagem com `max-keys=0` e leitura de chave aleatória inexistente (404 `NoSuchKey`), sem obter conteúdo ou alterar objetos de outro projeto. Não distribuir essa credencial ampla na Vercel.
-- **Comprovado:** PUT/GET/DELETE remotos com o adaptador da aplicação. **Pendente:** corrigir o escopo da chave e configurar as variáveis privadas na Vercel. `TODOKU_MAIL_STORAGE` permanece `disabled` até concluir também a restrição de acesso.
+- Credencial S3 Object Read/Write fornecida pelo operador e **restrita ao bucket `todoku-mail`**. Verificação após o ajuste: listagem vazia no bucket próprio retornou 200 e no bucket de outro projeto retornou **403**, sem obter conteúdo ou alterar objetos de outro projeto. A chave inicialmente ampla não foi distribuída na Vercel.
+- PUT/GET/DELETE remotos aprovados com o adaptador da aplicação e a credencial já restrita. As quatro variáveis de servidor e `TODOKU_MAIL_STORAGE=r2` foram configuradas em Production, Preview e Development; entram em cada novo deployment automático. As duas credenciais são do tipo Secret em Production/Preview; Development usa Config privado da equipe. Cópias locais permanecem em arquivos ignorados.
 
 ### Prova remota de persistência
 
-O `smoke:mail:r2` gravou e conferiu 62 bytes sintéticos no bucket privado, com SHA-256 `b4564487cbb997c39ac0a2d8b3135f7100f42fd9aab2a7d440042d8692e70320`. PUT **200**, GET **200**, DELETE **204**, GET após exclusão **404**. O objeto foi eliminado ao final. A requisição anônima ao objeto existente retornou **400**, XML `InvalidArgument` / `Authorization`: o endpoint S3 do R2 usa esse erro para ausência de autenticação. O teste reconhece essa resposta específica além de 401/403; não aceita qualquer erro 400. Nenhum e-mail externo foi usado.
+Após restringir a credencial, o `smoke:mail:r2` gravou e conferiu 62 bytes sintéticos no bucket privado, com SHA-256 `ebba975eb7b17089e36af3ec7375c6df332b150f1635d39f66d4cefe2860d963`. PUT **200**, GET **200**, DELETE **204**, GET após exclusão **404**. O objeto foi eliminado ao final. A requisição anônima ao objeto existente retornou **400**, XML `InvalidArgument` / `Authorization`: o endpoint S3 do R2 usa esse erro para ausência de autenticação. O teste reconhece essa resposta específica além de 401/403; não aceita qualquer erro 400. Nenhum e-mail externo foi usado.
 
 Wrangler local autenticado permitiu conferir novamente o bucket privado e o lifecycle. `cf` oficial foi instalado com credenciais OAuth criptografadas no keyring do Windows; os dois fluxos de autorização concederam somente leitura básica e a administração de tokens retornou 403. A chave S3 foi então fornecida pelo operador em `.env.r2.local`, ignorado. A autorização OAuth não substitui a restrição de bucket dessa chave.
 
 O comando `npm run smoke:mail:r2` usa credenciais em `.env.local` ou `.env.r2.local`, ambos ignorados. Cria uma chave aleatória sob um tenant sintético, compara os bytes baixados, exige negação de GET anônimo, exclui em `finally` e confirma GET autenticado 404. Não consulta o banco ou usa mensagens reais. A saída contém somente bucket, tamanho, hash dos bytes sintéticos e status HTTP; nunca credenciais, assinatura ou corpo.
 
-As credenciais deverão existir somente no servidor como `TODOKU_R2_ACCOUNT_ID`, `TODOKU_R2_BUCKET`, `TODOKU_R2_ACCESS_KEY_ID` e `TODOKU_R2_SECRET_ACCESS_KEY`. Após o teste remoto, configurar `TODOKU_MAIL_STORAGE=r2` nos ambientes aprovados, por stdin/API segura, e publicar exclusivamente via commit/push e integração GitHub/Vercel.
+As variáveis de servidor são `TODOKU_R2_ACCOUNT_ID`, `TODOKU_R2_BUCKET`, `TODOKU_R2_ACCESS_KEY_ID` e `TODOKU_R2_SECRET_ACCESS_KEY`. Foram configuradas por stdin após o teste remoto e de escopo. Publicação exclusivamente via commit/push e integração GitHub/Vercel. Para rotação futura, repetir teste e checagem de escopo antes de substituir as variáveis; manter Receiving pausado se perder o acesso ao storage.
 
 ## Resend preparado e pausado
 
@@ -47,7 +47,7 @@ TTL apresentado pelo Resend: `Auto`. Os três registros de envio/SPF não fazem 
 
 ## Inventário DNS preservado
 
-Consulta autenticada Cloudflare: cinco registros, TTL Auto, DNS-only.
+Inventário inicial consultado pela API Cloudflare: cinco registros, TTL Auto, DNS-only. A conferência pública posterior confirmou os mesmos valores abaixo e ausência do TXT DKIM novo (`NXDOMAIN`). O OAuth local do operador não permite listar/editar DNS; revalidar o acesso necessário antes de qualquer fase externa autorizada.
 
 | Tipo | Nome | Valor | Prioridade |
 | --- | --- | --- | --- |
@@ -59,9 +59,9 @@ Consulta autenticada Cloudflare: cinco registros, TTL Auto, DNS-only.
 
 ## Ativação e reversão a revisar
 
-Checagem publicada nesta preparação: `/`, `/mail` e `/api/health` retornaram 200; inbox sem sessão retornou 401; worker Mail autenticado retornou `receiving_disabled`; tentativa de operação de teste Notifications retornou 403 sem envio. Banco: source piloto disabled, duas identidades disabled, retenção 30 dias, nenhum source fixture ativo. Production/Preview/Development mantêm Receiving false e storage disabled. Tipo, 54 testes, build, CI e smoke autenticado no preview passaram na preparação inicial. A revisão do teste R2 reconhece o erro de autorização real observado e será novamente verificada no PR.
+Checagem publicada nesta preparação: `/`, `/mail` e `/api/health` retornaram 200; inbox sem sessão retornou 401; worker Mail autenticado retornou `receiving_disabled`; teste Notifications retornou 403 sem envio. Banco: source piloto disabled, duas identidades disabled, retenção 30 dias, nenhum source fixture ativo. Production/Preview/Development mantêm Receiving false; a configuração de storage foi atualizada para r2. Tipo, 54 testes, build e CI passaram, incluindo a revisão do erro de autorização R2. O smoke autenticado espera `storageReady=true` no novo deployment, duas identidades e caixa vazia, Receiving false, worker pausado, Notifications bloqueado e logout com revogação. O primeiro fluxo de recebimento real na Vercel continua reservado à fase C.
 
-1. Concluir a prova R2 e verificar CI/deployment automático da fase A antes de pedir a aprovação externa.
+1. Conferir CI e o novo deployment automático da fase A com storage configurado antes de pedir a aprovação externa.
 2. Solicitar autorização específica para habilitar Receiving no Resend e desativar Sending **mantendo Null MX e a flag global false**, apenas para obter o MX exato. Não interpretar isso como autorização para alterar DNS.
 3. Mostrar novamente o inventário e o diff com o MX real. Proposta limitada ao apex de `todoku.com.br`: substituir Null MX pelo MX e prioridade exatos do Resend; adicionar apenas o TXT DKIM acima e outra verificação realmente exigida, se houver. Preservar A, CNAME www, SPF apex e DMARC. Não publicar os registros de envio/SPF.
 4. Somente após autorização explícita do diff, alterar DNS, verificar resolução pública e domínio/recebimento no Resend. Revalidar site e `/api/health` antes/depois. Nenhum outro domínio, bucket ou Google Workspace está no escopo.

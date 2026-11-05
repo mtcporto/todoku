@@ -4,11 +4,11 @@ O Mail recebe e lê mensagens de identidades próprias em uma caixa unificada, s
 
 ## Estado verificado do piloto
 
-Em 04/11/2026, a inspeção confirmou banco único `todoku`, conta Resend acessível pelo CLI e R2 disponível na Cloudflare. `todoku.com.br` não está cadastrado no Resend; os dois domínios existentes estão com receiving desabilitado. R2 contém buckets de outros projetos, sem bucket Todoku ou credencial S3 de runtime configurada neste projeto. Nenhum desses recursos foi alterado ou reutilizado.
+Em 04/11/2026, o piloto usa o banco único `todoku`. O bucket R2 privado `todoku-mail` e o domínio/webhook Resend exclusivo foram provisionados na fase A da issue #12. Buckets e domínios de outros projetos não foram modificados ou reutilizados.
 
-O piloto tem cadastros preparatórios `contato@todoku.com.br` e `suporte@todoku.com.br`, com source, domínio e identidades **desativados**. A inbox publicada começa vazia. `TODOKU_MAIL_RECEIVING_ENABLED=false` e `TODOKU_MAIL_STORAGE=disabled` são explícitos nos ambientes Vercel. Notifications mantém `TODOKU_TEST_SEND_ENABLED=false`, marketing desabilitado e credenciais do teste anterior revogadas.
+O piloto tem cadastros preparatórios `contato@todoku.com.br` e `suporte@todoku.com.br`, com source, domínio e identidades **desativados**. A inbox publicada começa vazia. `TODOKU_MAIL_RECEIVING_ENABLED=false` e `TODOKU_MAIL_STORAGE=r2` são explícitos nos ambientes Vercel após o provisionamento da fase A. Notifications mantém `TODOKU_TEST_SEND_ENABLED=false`, marketing desabilitado e credenciais do teste anterior revogadas.
 
-O bucket privado `todoku-mail` e o domínio/webhook Resend foram preparados na fase A da issue #12, mantendo Receiving e o webhook desativados. **PUT/GET/DELETE remotos passaram com bytes sintéticos, eliminados ao final.** A credencial fornecida ainda precisa ser restrita somente a esse bucket antes da configuração na Vercel; storage permanece desabilitado. Não se declara recebimento externo funcionando nesta etapa. Inventário DNS, prova remota, bloqueios e reversão estão em [MAIL-ACTIVATION.md](MAIL-ACTIVATION.md).
+**PUT/GET/DELETE remotos passaram com bytes sintéticos, eliminados ao final.** A credencial foi restrita ao bucket e configurada no servidor Vercel, com negação de acesso a outro bucket verificada. Receiving e o webhook continuam desativados; não se declara recebimento externo funcionando nesta etapa. Inventário DNS, prova remota, gate externo e reversão estão em [MAIL-ACTIVATION.md](MAIL-ACTIVATION.md).
 
 ## Arquitetura e processamento
 
