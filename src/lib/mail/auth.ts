@@ -1,4 +1,9 @@
-import { randomBytes, scrypt as derive, timingSafeEqual } from "node:crypto";
+import {
+  randomBytes,
+  randomUUID,
+  scrypt as derive,
+  timingSafeEqual,
+} from "node:crypto";
 import type { Client } from "@libsql/client";
 import { body, hash, json, MailError, transaction } from "./common.ts";
 import { z } from "zod";
@@ -24,6 +29,7 @@ async function verify(password: string, stored: string) {
   const calculated = await scrypt(password, salt || "0".repeat(32));
   const expected = Buffer.from(key || "0".repeat(64), "hex");
   return (
+    /^scrypt\$[a-f0-9]{32}\$[a-f0-9]{64}$/.test(stored) &&
     expected.length === calculated.length &&
     timingSafeEqual(expected, calculated)
   );
@@ -50,6 +56,7 @@ function cookieName(request: Request) {
 function cookie(request: Request, token: string, maxAge: number) {
   return `${cookieName(request)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
 }
+export const clearMailSession = (request: Request) => cookie(request, "", 0);
 export function sessionToken(request: Request) {
   return (
     request.headers
@@ -82,13 +89,16 @@ export async function createMailSession(
   db: Pick<Client, "execute">,
   request: Request,
   userId: string,
+  method: "password" | "google" = "password",
 ) {
   const token = randomBytes(32).toString("base64url");
   const result = await db.execute({
-    sql: "INSERT INTO mail_sessions(token_hash,user_id,expires_at) SELECT ?,id,? FROM mail_users WHERE id=? AND status='active'",
+    sql: "INSERT INTO mail_sessions(token_hash,user_id,expires_at,session_id,auth_method) SELECT ?,id,?,?,? FROM mail_users WHERE id=? AND status='active'",
     args: [
       hash(token),
       new Date(Date.now() + 12 * 3_600_000).toISOString(),
+      randomUUID(),
+      method,
       userId,
     ],
   });
@@ -102,8 +112,16 @@ export async function authRequest(
 ) {
   if (operation === "session") {
     const user = await requireUser(db, request);
+    const session = (
+      await db.execute({
+        sql: "SELECT session_id AS id,auth_method AS method,created_at AS createdAt,expires_at AS expiresAt FROM mail_sessions WHERE token_hash=? AND user_id=? AND revoked_at IS NULL",
+        args: [hash(sessionToken(request)), user.id],
+      })
+    ).rows[0];
+    if (!session) throw new MailError("unauthorized", 401);
     return json({
       user,
+      session,
       administration: await administrativeCapabilities(db, user.id),
     });
   }

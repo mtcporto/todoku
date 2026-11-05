@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUser, sameOrigin } from "./auth.ts";
 import { body, json, MailError, transaction } from "./common.ts";
 import { administrativeCapabilities } from "./admin-capabilities.ts";
+import { invitationAdministration } from "./invitations-http.ts";
 import {
   administrativeId,
   membershipInput,
@@ -172,6 +173,8 @@ export async function administrativeRequest(
   if (segments[0] !== "organizations") throw new MailError("not_found", 404);
   const tenant =
     segments[1] === undefined ? null : administrativeId.parse(segments[1]);
+  if (tenant && segments[2] === "invitations")
+    return invitationAdministration(request, segments, db, tenant);
   if (request.method === "GET") {
     const collection = tenant
       ? z.enum(collections).parse(segments[2])

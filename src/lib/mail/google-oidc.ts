@@ -9,11 +9,21 @@ import {
   sameOrigin,
   sessionToken,
 } from "./auth.ts";
-import { hash, json, MailError, transaction } from "./common.ts";
+import { hash, json, MailError, transaction, body } from "./common.ts";
+import {
+  acceptInvitation,
+  pendingInvitation,
+  invitationToken,
+} from "./invitations.ts";
+import {
+  googleIssuer,
+  googleBinding,
+  bindGoogleIdentity,
+} from "./google-identity.ts";
 
 // Pinned to Google's published discovery metadata; no client-supplied issuer/URLs.
 const google = {
-  issuer: "https://accounts.google.com",
+  issuer: googleIssuer,
   authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
   token_endpoint: "https://oauth2.googleapis.com/token",
   jwks_uri: "https://www.googleapis.com/oauth2/v3/certs",
@@ -41,6 +51,8 @@ const contextSchema = z.strictObject({
   redirectUri: z.string(),
   ownerUserId: z.string(),
   allowedEmail: z.string(),
+  intent: z.enum(["start", "link", "invite"]).optional(),
+  invitationId: z.string().optional(),
 });
 function configuration(options: Options): GoogleConfig | null {
   if (options.config === null) return null;
@@ -117,17 +129,53 @@ async function authAudit(
     args: [randomUUID(), user, action],
   });
 }
+async function mayLink(db: Pick<Client, "execute">, user: string) {
+  return (
+    (
+      await db.execute({
+        sql: "SELECT m.user_id FROM mail_memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=? AND m.status='active' AND t.status='active' LIMIT 1",
+        args: [user],
+      })
+    ).rows.length === 1
+  );
+}
 async function start(
   db: Client,
   request: Request,
   config: GoogleConfig,
   options: Options,
-  link: boolean,
+  intent: "start" | "link" | "invite",
 ) {
   sameOrigin(request);
-  const user = link ? await requireUser(db, request) : null;
-  if (user && user.id !== config.ownerUserId)
+  const user =
+    intent === "link" || (intent === "invite" && sessionToken(request))
+      ? await requireUser(db, request)
+      : null;
+  if (intent === "link" && (!user || !(await mayLink(db, user.id))))
     throw new MailError("forbidden", 403);
+  let invitationId: string | undefined;
+  if (intent === "invite") {
+    try {
+      const raw = await body(request, 2048);
+      let parsed: unknown;
+      if (request.headers.get("content-type")?.startsWith("application/json"))
+        parsed = JSON.parse(raw);
+      else {
+        const form = new URLSearchParams(raw);
+        if ([...form.keys()].some((k) => form.getAll(k).length !== 1))
+          throw new MailError("invalid_invitation", 400);
+        parsed = Object.fromEntries(form);
+      }
+      const input = z.strictObject({ token: invitationToken }).parse(parsed);
+      invitationId = String(
+        (await pendingInvitation(db, hash(input.token), true)).id,
+      );
+    } catch (error) {
+      if (error instanceof SyntaxError || error instanceof z.ZodError)
+        throw new MailError("invalid_invitation", 400);
+      throw error;
+    }
+  }
   const token = randomBytes(32).toString("base64url"),
     key = hash(token);
   const state = oidc.randomState(),
@@ -143,6 +191,8 @@ async function start(
       redirectUri,
       ownerUserId: config.ownerUserId,
       allowedEmail: config.allowedEmail,
+      intent,
+      ...(invitationId ? { invitationId } : {}),
     }),
     scope,
     key,
@@ -151,6 +201,12 @@ async function start(
   );
   const now = new Date().toISOString();
   await transaction(db, async (tx) => {
+    if (user) {
+      await requireUser(tx, request);
+      if (intent === "link" && !(await mayLink(tx, user.id)))
+        throw new MailError("forbidden", 403);
+    }
+    if (invitationId) await pendingInvitation(tx, invitationId);
     const bucket = hash("oidc:google:start");
     const rate = (
       await tx.execute({
@@ -191,6 +247,14 @@ async function start(
     code_challenge_method: "S256",
     prompt: "select_account",
   });
+  if (
+    intent === "invite" &&
+    request.headers.get("accept") === "application/json"
+  )
+    return json({ authorizationUrl: url.href }, 200, {
+      "set-cookie": attemptCookie(request, token, 600),
+      "referrer-policy": "no-referrer",
+    });
   return redirect(url.href, [attemptCookie(request, token, 600)]);
 }
 async function callback(
@@ -254,46 +318,47 @@ async function callback(
       claims.sub.length > 255 ||
       claims.email_verified !== true ||
       typeof claims.email !== "string" ||
-      claims.email.toLowerCase() !== config.allowedEmail
+      !z.email().safeParse(claims.email).success
     )
       throw new MailError("invalid_oidc", 401);
+    const intent = context.intent ?? (attempt.link_user_id ? "link" : "start");
+    const email = claims.email.toLowerCase();
     const session = await transaction(db, async (tx) => {
+      let initiatingUser: string | null = null;
       if (attempt.link_user_id) {
-        // The normal session cookie is Strict and need not survive the Google redirect.
-        // Revalidate the initiating session from its stored hash, including revocation/expiry.
-        const owner = (
+        const current = (
           await tx.execute({
             sql: "SELECT u.id FROM mail_users u JOIN mail_sessions s ON s.user_id=u.id WHERE u.id=? AND u.status='active' AND s.token_hash=? AND s.revoked_at IS NULL AND julianday(s.expires_at)>julianday('now')",
-            args: [config.ownerUserId, attempt.link_session_hash],
+            args: [attempt.link_user_id, attempt.link_session_hash],
           })
         ).rows[0];
-        if (!owner || attempt.link_user_id !== owner.id)
-          throw new MailError("invalid_oidc", 401);
-        await tx.execute({
-          sql: "INSERT INTO mail_auth_identities(id,user_id,provider,issuer,subject,verified_email) VALUES (?,?,'google',?,?,?) ON CONFLICT DO NOTHING",
-          args: [
-            randomUUID(),
-            owner.id,
-            google.issuer,
-            claims.sub,
-            config.allowedEmail,
-          ],
-        });
+        if (!current) throw new MailError("invalid_oidc", 401);
+        initiatingUser = String(current.id);
       }
-      // No account creation or email-based fallback on sign-in. Email is only the pilot gate.
-      const binding = (
-        await tx.execute({
-          sql: "SELECT user_id FROM mail_auth_identities WHERE provider='google' AND issuer=? AND subject=? AND status='active'",
-          args: [google.issuer, claims.sub],
-        })
-      ).rows[0];
-      if (!binding || binding.user_id !== config.ownerUserId)
+      let userId: string;
+      if (intent === "invite") {
+        if (!context.invitationId) throw new MailError("invalid_oidc", 401);
+        userId = await acceptInvitation(
+          tx,
+          context.invitationId,
+          claims.sub,
+          email,
+          initiatingUser,
+        );
+      } else if (intent === "link") {
+        if (!initiatingUser || !(await mayLink(tx, initiatingUser)))
+          throw new MailError("invalid_oidc", 401);
+        await bindGoogleIdentity(tx, initiatingUser, claims.sub, email);
+        userId = initiatingUser;
+      } else {
+        const binding = await googleBinding(tx, claims.sub);
+        if (!binding) throw new MailError("invalid_oidc", 401);
+        userId = String(binding.user_id);
+      }
+      // Preserve the original owner's verified Google account gate.
+      if (userId === config.ownerUserId && email !== config.allowedEmail)
         throw new MailError("invalid_oidc", 401);
-      const value = await createMailSession(
-        tx,
-        request,
-        String(binding.user_id),
-      );
+      const value = await createMailSession(tx, request, userId, "google");
       if (attempt.link_session_hash)
         await tx.execute({
           sql: "UPDATE mail_sessions SET revoked_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE token_hash=?",
@@ -301,8 +366,12 @@ async function callback(
         });
       await authAudit(
         tx,
-        String(binding.user_id),
-        attempt.link_user_id ? "oidc_linked" : "oidc_login",
+        userId,
+        intent === "invite"
+          ? "oidc_invitation_accepted"
+          : intent === "link"
+            ? "oidc_linked"
+            : "oidc_login",
       );
       return value;
     });
@@ -335,7 +404,8 @@ export async function googleOidcRequest(
     if (
       !(["status", "callback"].includes(operation)
         ? request.method === "GET"
-        : ["start", "link"].includes(operation) && request.method === "POST")
+        : ["start", "link", "invite"].includes(operation) &&
+          request.method === "POST")
     )
       return json({ error: "method_not_allowed" }, 405);
     config = configuration(options);
@@ -345,9 +415,9 @@ export async function googleOidcRequest(
       const migrated =
         (
           await db.execute(
-            "SELECT version FROM schema_migrations WHERE version='0005_mail_oidc'",
+            "SELECT version FROM schema_migrations WHERE version IN ('0005_mail_oidc','0008_mail_users_invitations_sessions')",
           )
-        ).rows.length === 1;
+        ).rows.length === 2;
       if (!migrated)
         return json({ enabled: false, canLink: false, linked: false });
       let user = null;
@@ -357,7 +427,7 @@ export async function googleOidcRequest(
         if (!(error instanceof MailError) || error.status !== 401) throw error;
       }
       const linked =
-        user?.id === config.ownerUserId &&
+        user &&
         (
           await db.execute({
             sql: "SELECT id FROM mail_auth_identities WHERE user_id=? AND provider='google' AND issuer=? AND status='active'",
@@ -366,7 +436,7 @@ export async function googleOidcRequest(
         ).rows.length === 1;
       return json({
         enabled: true,
-        canLink: user?.id === config.ownerUserId && !linked,
+        canLink: !!user && !linked && (await mayLink(db, user.id)),
         linked: Boolean(linked),
       });
     }
@@ -375,7 +445,13 @@ export async function googleOidcRequest(
       throw new MailError("invalid_origin", 403);
     return operation === "callback"
       ? await callback(db, request, config, options)
-      : await start(db, request, config, options, operation === "link");
+      : await start(
+          db,
+          request,
+          config,
+          options,
+          operation as "start" | "link" | "invite",
+        );
   } catch (error) {
     if (operation === "callback") {
       return redirect(

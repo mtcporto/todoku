@@ -1,5 +1,7 @@
 # Configurar e validar o Google OIDC
 
+> Evolução na entrega 3: [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md). O login passa a aceitar bindings internos autorizados; novas pessoas exigem convite válido ou vínculo explícito iniciado pela própria sessão de usuário com membership ativa. Não há vínculo por coincidência de e-mail, cadastro público ou grants automáticos. O gate verificado do proprietário permanece. O procedimento abaixo registra o provisionamento original do piloto; a audiência/test users no Google não é alterada por esta PR.
+
 Primeira entrega da [issue #20](https://github.com/mtcporto/todoku/issues/20). O login atual é preservado. A [auditoria e proposta de migração](MAIL-MVP3-AUDIT.md) descrevem os limites desta PR.
 
 ## Pré-requisitos e variáveis privadas

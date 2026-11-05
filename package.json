@@ -30,6 +30,7 @@
     "smoke:mail:outbound:browser": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/smoke-mail-outbound-browser.ts",
     "smoke:mail:composer": "node --experimental-strip-types scripts/smoke-mail-composer-ux.ts",
     "smoke:mail:oidc": "node --experimental-strip-types scripts/smoke-mail-oidc-ui.ts",
+    "smoke:mail:invitations": "node --experimental-strip-types scripts/smoke-mail-invitations-ui.ts",
     "mail:fixture:cleanup": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/cleanup-mail-fixture.ts"
   },
   "dependencies": {
