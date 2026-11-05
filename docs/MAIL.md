@@ -8,7 +8,7 @@ Em 04/11/2026, a inspeção confirmou banco único `todoku`, conta Resend acess�
 
 O piloto tem cadastros preparatórios `contato@todoku.com.br` e `suporte@todoku.com.br`, com source, domínio e identidades **desativados**. A inbox publicada começa vazia. `TODOKU_MAIL_RECEIVING_ENABLED=false` e `TODOKU_MAIL_STORAGE=disabled` são explícitos nos ambientes Vercel. Notifications mantém `TODOKU_TEST_SEND_ENABLED=false`, marketing desabilitado e credenciais do teste anterior revogadas.
 
-O bucket privado `todoku-mail` e o domínio/webhook Resend foram preparados na fase A da issue #12, mantendo Receiving e o webhook desativados. Credencial S3, teste remoto e configuração R2 ainda estão pendentes; **não houve upload remoto em produção**. Não se declara recebimento externo funcionando nesta etapa. Inventário DNS, registros exatos fornecidos pelo Resend, bloqueios e plano de reversão estão em [MAIL-ACTIVATION.md](MAIL-ACTIVATION.md).
+O bucket privado `todoku-mail` e o domínio/webhook Resend foram preparados na fase A da issue #12, mantendo Receiving e o webhook desativados. **PUT/GET/DELETE remotos passaram com bytes sintéticos, eliminados ao final.** A credencial fornecida ainda precisa ser restrita somente a esse bucket antes da configuração na Vercel; storage permanece desabilitado. Não se declara recebimento externo funcionando nesta etapa. Inventário DNS, prova remota, bloqueios e reversão estão em [MAIL-ACTIVATION.md](MAIL-ACTIVATION.md).
 
 ## Arquitetura e processamento
 

@@ -8,8 +8,14 @@ Estado em **04/11/2026 (America/Fortaleza)**. A fase A está em preparação; as
 - Acesso `r2.dev` explicitamente desativado, lista de domínios customizados vazia e CORS inexistente (API retorna 404 para configuração ausente).
 - Lifecycle `mail-private-retention-backstop`, somente prefixo `mail/`: expiração por idade de **91 dias** (`7862400` segundos) e aborto de uploads multipart incompletos após **24h**.
 - A aplicação continua usando expiração lógica de 30 dias por padrão, configurável entre 1–90 dias, e coleta de uploads incompletos após 24h. O lifecycle é uma proteção contra órfãos; os 91 dias evitam remover conteúdo antes do maior prazo permitido. A execução da regra pelo provedor não é instantânea. Não representa um teste de exclusão após 91 dias.
-- **Pendente:** credencial S3 Object Read/Write restrita somente a este bucket. O conector solicitou reautenticação para administrar API tokens. Não usar credencial ampla de outro projeto.
-- **Pendente:** PUT/GET/DELETE reais com o adaptador da aplicação e variáveis privadas na Vercel. `TODOKU_MAIL_STORAGE` permanece `disabled` até essa prova; não declarar R2 funcional apenas porque o bucket existe.
+- **Pendente:** restringir a credencial S3 fornecida pelo operador somente a este bucket. A chave funcionou no teste, mas também permitiu consulta em outro bucket da conta. A verificação usou listagem com `max-keys=0` e leitura de chave aleatória inexistente (404 `NoSuchKey`), sem obter conteúdo ou alterar objetos de outro projeto. Não distribuir essa credencial ampla na Vercel.
+- **Comprovado:** PUT/GET/DELETE remotos com o adaptador da aplicação. **Pendente:** corrigir o escopo da chave e configurar as variáveis privadas na Vercel. `TODOKU_MAIL_STORAGE` permanece `disabled` até concluir também a restrição de acesso.
+
+### Prova remota de persistência
+
+O `smoke:mail:r2` gravou e conferiu 62 bytes sintéticos no bucket privado, com SHA-256 `b4564487cbb997c39ac0a2d8b3135f7100f42fd9aab2a7d440042d8692e70320`. PUT **200**, GET **200**, DELETE **204**, GET após exclusão **404**. O objeto foi eliminado ao final. A requisição anônima ao objeto existente retornou **400**, XML `InvalidArgument` / `Authorization`: o endpoint S3 do R2 usa esse erro para ausência de autenticação. O teste reconhece essa resposta específica além de 401/403; não aceita qualquer erro 400. Nenhum e-mail externo foi usado.
+
+Wrangler local autenticado permitiu conferir novamente o bucket privado e o lifecycle. `cf` oficial foi instalado com credenciais OAuth criptografadas no keyring do Windows; os dois fluxos de autorização concederam somente leitura básica e a administração de tokens retornou 403. A chave S3 foi então fornecida pelo operador em `.env.r2.local`, ignorado. A autorização OAuth não substitui a restrição de bucket dessa chave.
 
 O comando `npm run smoke:mail:r2` usa credenciais em `.env.local` ou `.env.r2.local`, ambos ignorados. Cria uma chave aleatória sob um tenant sintético, compara os bytes baixados, exige negação de GET anônimo, exclui em `finally` e confirma GET autenticado 404. Não consulta o banco ou usa mensagens reais. A saída contém somente bucket, tamanho, hash dos bytes sintéticos e status HTTP; nunca credenciais, assinatura ou corpo.
 
@@ -53,7 +59,7 @@ Consulta autenticada Cloudflare: cinco registros, TTL Auto, DNS-only.
 
 ## Ativação e reversão a revisar
 
-Checagem publicada nesta preparação: `/`, `/mail` e `/api/health` retornaram 200; inbox sem sessão retornou 401; worker Mail autenticado retornou `receiving_disabled`; tentativa de operação de teste Notifications retornou 403 sem envio. Banco: source piloto disabled, duas identidades disabled, retenção 30 dias, nenhum source fixture ativo. Production/Preview/Development mantêm Receiving false e storage disabled. Tipo, 54 testes e build locais passaram; CI e preview serão conferidos no PR.
+Checagem publicada nesta preparação: `/`, `/mail` e `/api/health` retornaram 200; inbox sem sessão retornou 401; worker Mail autenticado retornou `receiving_disabled`; tentativa de operação de teste Notifications retornou 403 sem envio. Banco: source piloto disabled, duas identidades disabled, retenção 30 dias, nenhum source fixture ativo. Production/Preview/Development mantêm Receiving false e storage disabled. Tipo, 54 testes, build, CI e smoke autenticado no preview passaram na preparação inicial. A revisão do teste R2 reconhece o erro de autorização real observado e será novamente verificada no PR.
 
 1. Concluir a prova R2 e verificar CI/deployment automático da fase A antes de pedir a aprovação externa.
 2. Solicitar autorização específica para habilitar Receiving no Resend e desativar Sending **mantendo Null MX e a flag global false**, apenas para obter o MX exato. Não interpretar isso como autorização para alterar DNS.

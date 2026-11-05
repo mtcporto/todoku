@@ -26,6 +26,8 @@ const tenant = "todoku-storage-smoke";
 const key = objectKey(tenant, "r2-proof", randomUUID(), "synthetic.bin");
 const value = new TextEncoder().encode(`Todoku synthetic R2 proof ${randomUUID()}`);
 let uploaded = false;
+let anonymousStatus = 0;
+let anonymousCode = "";
 try {
   // Mark first: a timeout can happen after the provider accepted the upload.
   uploaded = true;
@@ -35,19 +37,36 @@ try {
     `https://${account}.r2.cloudflarestorage.com/${bucket}/${key}`,
     { redirect: "error", signal: AbortSignal.timeout(10_000) },
   );
-  assert.equal(anonymous.status, 403);
+  const error = await anonymous.text();
+  anonymousStatus = anonymous.status;
+  anonymousCode = error.match(/<Code>([^<]+)<\/Code>/)?.[1] ?? "";
+  // R2's S3 endpoint also reports missing Authorization as HTTP 400.
+  assert.ok(
+    anonymous.status === 401 ||
+      anonymous.status === 403 ||
+      (anonymous.status === 400 &&
+        anonymousCode === "InvalidArgument" &&
+        /<Message>Authorization<\/Message>/.test(error)),
+    "Existing synthetic object must require authorization",
+  );
 } finally {
   if (uploaded) await storage.delete(tenant, key);
 }
 await assert.rejects(() => storage.get(tenant, key));
-assert.deepEqual(requests.map((request) => request.method), ["PUT", "GET", "DELETE", "GET"]);
+assert.deepEqual(requests.map((request) => request.method), [
+  "PUT", "GET", "DELETE", "GET",
+]);
 assert.equal(requests.at(-1)?.status, 404);
-console.log(JSON.stringify({
-  bucket,
-  syntheticBytes: value.length,
-  sha256: createHash("sha256").update(value).digest("hex"),
-  requests,
-  anonymousAccess: "denied",
-  objectDeleted: true,
-  externalEmails: 0,
-}));
+console.log(
+  JSON.stringify({
+    bucket,
+    syntheticBytes: value.length,
+    sha256: createHash("sha256").update(value).digest("hex"),
+    requests,
+    anonymousAccess: "denied",
+    anonymousStatus,
+    anonymousCode,
+    objectDeleted: true,
+    externalEmails: 0,
+  }),
+);
