@@ -1,4 +1,6 @@
-# Sending preparado — DNS e primeiro envio aguardam autorização
+# Histórico da preparação de Sending
+
+Este documento preserva o snapshot anterior à aplicação do DNS. Os registros foram posteriormente aprovados, aplicados e verificados, conforme as evidências na issue #15. O procedimento autorizado para o primeiro envio está em [MAIL-SENDING-CONTROLLED-TEST.md](MAIL-SENDING-CONTROLLED-TEST.md).
 
 Preparação da fase B da [issue #15](https://github.com/mtcporto/todoku/issues/15), autorizada no [registro do responsável](https://github.com/mtcporto/todoku/issues/15#issuecomment-6658856254). Estado conferido em **05/11/2026, 13:25 UTC**. A UX do compositor segue separada na #17.
 
