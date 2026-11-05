@@ -60,6 +60,6 @@ Validação local: 111 testes aprovados, typecheck e build aprovados; contratos 
 
 ## Publicação e rollback
 
-A migração compatível precede o código. Não criar grants com `can_read=0` enquanto main servir guards antigos que ignoram esse campo. Esta PR permanece revisável: schema e bootstrap não publicam os guards. O deployment da branch é automático pelo GitHub → Vercel. Após merge, verificar o deployment automático da main antes de habilitar mutações administrativas.
+A migração compatível precede o código. A PR #23 foi integrada em `85c17e7` e seu deployment automático chegou a READY, com o alias `todoku.com.br` e os fluxos de senha, sessão, conteúdo, anexos e logout validados. [Evidências da publicação e recuperação](https://github.com/mtcporto/todoku/issues/20#issuecomment-6669346903). Os guards compatíveis com `can_read` já estão na main. A [PR de APIs administrativas](MAIL-ADMIN-API.md) usa essa base e permanece sujeita à revisão; não aplica permissões remotamente durante seus testes.
 
 Depois de introduzir grants sem leitura, **não voltar a versão que ignore `can_read`**. Em caso de falha, bloquear a funcionalidade afetada preservando guards/tabelas/auditorias. Sem down migration destrutiva ou restore sobre banco ativo como rotina; restaurar primeiro em ambiente isolado para recuperação planejada.

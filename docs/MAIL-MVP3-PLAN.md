@@ -1,5 +1,7 @@
 # MVP 3 — plano administrativo, quotas e usabilidade
 
+> Entrega 1 publicada pela PR #23 em `85c17e7`. A entrega 2 implementa as [APIs administrativas](MAIL-ADMIN-API.md), com listagens por escopo, memberships/papéis/grants, auditoria transacional e proteção do último administrador. Sua PR permanece para revisão, sem merge ou mutações remotas de acesso durante a validação.
+
 > Plano aprovado pelo responsável. A PR 1 implementa [autorização e migração 0007](MAIL-AUTHORIZATION.md), incluindo bootstrap auditado pelo UUID e a pequena correção visual **Sair** antecipada da PR 7. As próximas entregas continuam separadas. Manter 20 mensagens/24h até orçamento agregado e contabilização por destinatário.
 
 Proposta após auditoria somente de leitura em 05/11/2026. Base: `main` em `1fec48a`, migrações `0001`–`0006`, PRs #21/#22 concluídas. Esta proposta não aplica migrações, altera quotas ou concede papéis. Evidências e lacunas: [auditoria](MAIL-MVP3-AUDIT.md).
