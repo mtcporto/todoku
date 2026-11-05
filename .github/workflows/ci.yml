@@ -30,3 +30,4 @@ jobs:
           done
           npm run smoke:mail:composer
           npm run smoke:mail:oidc
+          npm run smoke:mail:invitations

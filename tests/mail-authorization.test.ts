@@ -708,6 +708,7 @@ test("0007 preserves legacy grants, only infers unambiguous draft authors and de
     ).rows;
     assert.deepEqual(await migrate(db, "migrations"), [
       "0007_mail_authorization",
+      "0008_mail_users_invitations_sessions",
     ]);
     assert.deepEqual(
       (

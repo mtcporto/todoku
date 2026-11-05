@@ -1,5 +1,7 @@
 # Mail — APIs administrativas (MVP 3, entrega 2)
 
+> Publicada pela PR #24 em `37e20d4`. A entrega 3 acrescenta [convites e sessões](MAIL-USERS-INVITATIONS.md), preservando estes endpoints, escopos e guards.
+
 Base: main `85c17e7`, depois da publicação da PR #23. Esta entrega reutiliza a migração `0007` e os guards de conteúdo, sem nova migração ou backfill. A PR deve permanecer aberta para revisão; não autoriza mutações reais de permissões durante os testes remotos.
 
 ## Autenticação e escopos

@@ -15,6 +15,7 @@ import { mailStorage, type MailStorage } from "./storage.ts";
 import { runMailWorker } from "./worker.ts";
 import { mailActions } from "./actions.ts";
 import { administrativeRequest } from "./admin-http.ts";
+import { sessionsRequest } from "./sessions.ts";
 import {
   mailboxFolder,
   messageGrant,
@@ -51,6 +52,8 @@ export async function mailRequest(
 ) {
   try {
     const [operation, id, action] = segments;
+    if (operation === "sessions")
+      return await sessionsRequest(request, segments, db);
     if (operation === "admin")
       return await administrativeRequest(request, segments.slice(1), db);
     if (
