@@ -4,7 +4,7 @@ Escopo desta PR: fases 1 e 2 da [issue #20](https://github.com/mtcporto/todoku/i
 
 ## Inventário conferido
 
-Consulta somente de leitura em 05/11/2026, 15:57 UTC: banco único `todoku`, migrações `0001_durable_ingestion` a `0004_mail_outbound` aplicadas e checksums iguais ao repositório. Nenhuma migração desta PR foi aplicada ao banco remoto.
+Inventário inicial em 05/11/2026, 15:57 UTC: banco único `todoku`, migrações `0001_durable_ingestion` a `0004_mail_outbound` e checksums iguais ao repositório. Na preparação autorizada, às 18:12:26 UTC, `0005_mail_oidc` foi aplicada após backup e validação local. Os dados das 30 tabelas anteriores permaneceram iguais e não houve violações de FK. O [registro operacional](MAIL-GOOGLE-OIDC.md#preparação-operacional-em-05112026) contém evidências e o hash do restore point privado.
 
 | Camada | Modelo atual | Implicação para o MVP 3 |
 | --- | --- | --- |
@@ -58,4 +58,4 @@ Rollback: desativar `TODOKU_GOOGLE_OIDC_ENABLED` e publicar por GitHub → Verce
 
 Há testes locais com JWTs RSA assinados e token/JWKS simulados, incluindo troca PKCE, assinatura inválida, claims, replay, concorrência, sessão revogada, CSRF e isolamento. A UI tem contrato automatizado desktop/mobile com APIs interceptadas. Esses testes não substituem um consentimento/login real no Google.
 
-Os arquivos privados inspecionados não contêm Client ID/Secret OAuth do Todoku; `.env.mail-access.local` contém apenas o acesso por senha. Configuração do cliente, primeiro vínculo e validação humana no Google permanecem pendentes. Nenhuma credencial OAuth foi criada e o acesso de produção não foi alterado. Ver [procedimento de configuração e validação](MAIL-GOOGLE-OIDC.md).
+Os arquivos privados inspecionados ainda não contêm Client ID/Secret OAuth do Todoku; `.env.mail-access.local` contém apenas o acesso por senha. A autenticação do gcloud e a migração foram concluídas, mas criar o cliente Web requer a etapa documentada do Console. Configuração do cliente, primeiro vínculo e validação humana no Google permanecem pendentes. Nenhuma credencial OAuth foi criada e Google permanece explicitamente desativado em Production. Ver [procedimento de configuração e validação](MAIL-GOOGLE-OIDC.md).

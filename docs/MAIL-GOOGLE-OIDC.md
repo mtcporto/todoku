@@ -8,11 +8,12 @@ Primeira entrega da [issue #20](https://github.com/mtcporto/todoku/issues/20). O
 
 No Google Auth Platform, selecionar o projeto autorizado e configurar o cliente Web. Para o piloto, limitar a audiência/test users a `mtcporto@gmail.com` quando aplicável. Scopes solicitados pelo Todoku: apenas `openid email`. Não habilitar APIs de Gmail nem autorização offline. [Documentação Google](https://developers.google.com/identity/openid-connect/openid-connect).
 
-Registrar o callback exato para cada ambiente usado, por exemplo:
+Registrar os dois callbacks autorizados para o cliente Todoku Mail:
 
-- Desenvolvimento: `http://127.0.0.1:3039/api/mail/oidc/google/callback`.
-- Preview: `https://<alias-estavel-da-branch>.vercel.app/api/mail/oidc/google/callback`.
-- Production, somente após validação e aprovação de rollout: `https://todoku.com.br/api/mail/oidc/google/callback`.
+- Preview da PR #21: `https://todoku-git-feat-mail-google-oidc-20-marco-portos-projects.vercel.app/api/mail/oidc/google/callback`.
+- Production: `https://todoku.com.br/api/mail/oidc/google/callback`.
+
+O cadastro do callback de Production foi autorizado; ativar Google nesse ambiente ainda depende da validação no Preview e de aprovação posterior. Não cadastrar localhost para este piloto.
 
 Não usar callback wildcard. No Preview, selecionar alias estável e configurar `TODOKU_MAIL_ORIGIN` para esse alias; os URLs efêmeros de deployments não são callbacks automaticamente autorizados. Não autenticar no preview apontando o callback para Production.
 
@@ -32,7 +33,7 @@ Conferir o usuário existente por consulta privada antes de selecionar o ID. Nã
 
 ## Ordem de implantação
 
-1. Revisar a PR e manter a flag Google desativada. Backup/restore point do banco antes de qualquer migração operacional; esta PR não aplicou `0005` ao Turso remoto.
+1. Revisar a PR e manter a flag Google desativada. Fazer backup/restore point do banco antes de qualquer migração operacional. A preparação de `0005` já foi executada conforme o registro abaixo.
 2. Testar `0005_mail_oidc` numa base temporária local e conferir que usuários/grants existentes ficam iguais. A suíte automatizada já faz isso; não criar outro banco remoto para o piloto.
 3. No banco único aprovado, aplicar a migração aditiva com o runner existente, selecionando explicitamente a URL privada do Todoku, sem imprimi-la. Preservar os checksums de `0001`–`0004`. Não executar migração em build/request.
 4. Configurar o cliente e as variáveis apenas no ambiente de validação autorizado, com origem/callback correspondentes. Manter Receiving/Sending de Preview desabilitados. Antes de ativar Google em Production, concluir o vínculo e login reais num ambiente de validação e registrar o resultado.
@@ -41,6 +42,17 @@ Conferir o usuário existente por consulta privada antes de selecionar o ID. Nã
 7. Conferir **Google vinculado**, mesmo ID de usuário, mesmos grants e mesma inbox. Sair e usar **Entrar com Google**. Confirmar o novo acesso, sair novamente e testar o login por senha em uma sessão separada. Nenhum e-mail externo é necessário para validar login.
 
 O endpoint `/api/mail/oidc/google/status` anuncia `enabled=false` quando a flag está desativada ou a migração está pendente; configuração inválida retorna erro sanitizado 503. A UI preserva o acesso por senha em ambos os casos. Início e vínculo usam POST com checagem de origem; callback usa GET com state e cookie de tentativa. Falhas retornam uma mensagem genérica e preservam o fallback. Não há cadastro público nem vínculo automático por e-mail.
+
+## Preparação operacional em 05/11/2026
+
+- `gcloud` autenticado com a conta responsável; quatro projetos existentes inventariados. `umbrella-mtcporto` é o candidato geral identificado, condicionado à conferência no Console de que o consentimento não pertence a outro produto. Nenhum projeto foi criado ou configuração de outro aplicativo alterada.
+- A API/CLI de [OAuth para Workforce Identity Federation](https://docs.cloud.google.com/iam/docs/workforce-manage-oauth-app) não administra o cliente Google comum usado pelo Todoku. A antiga [API de clientes OAuth do IAP foi descontinuada](https://docs.cloud.google.com/iap/docs/deprecations/migrate-oauth-client). A criação do cliente Web deve usar [Google Auth Platform → Clients](https://support.google.com/cloud/answer/15549257?hl=en), sem endpoints improvisados.
+- Backup privado com esquema até `0004`, integridade SQLite `ok` e zero violações de FK: `.vercel/backups/todoku-before-oidc-20261105.db`. SHA-256: `0315025f7c7b0614b1c2abeed04116b4350301957d48247660f0cdb1e4c575c7`. Leitura e dados do snapshot local conferidos; não foi realizado restore no banco em uso.
+- `0005_mail_oidc` validada localmente, com reaplicação idempotente, e aplicada ao Turso existente às **18:12:26 UTC**. Comparação antes/depois confirmou os mesmos dados nas 30 tabelas anteriores, incluindo usuários, sessões, grants, mensagens e auditoria. Zero violações de FK após a migração.
+- Vercel: flag Google explicitamente `false` em Production. Origem, usuário interno autorizado, e-mail e flag Google `false` configurados exclusivamente para o Preview da branch `feat/mail-google-oidc-20`, com registros separados de Production e Development. As flags de envio/recebimento e a origem de Production foram preservadas.
+- Ainda pendentes: criar/baixar o cliente Web exclusivo com os dois callbacks; importar ID/Secret privados para o Preview da branch; habilitar Google apenas nesse Preview e publicar por push; concluir o vínculo e login reais com participação do responsável. O download pode ser salvo em `.vercel/google-oauth-todoku.private.json`, ignorado pelo Git.
+
+O snapshot completo contém dados privados e fica somente no armazenamento local ignorado. Seu hash e os resultados de integridade podem ser registrados no GitHub; o banco, as credenciais e as sessões não.
 
 ## Evidências para promover o rollout
 
