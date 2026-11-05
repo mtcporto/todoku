@@ -32,6 +32,14 @@ export async function retainMail(
   now = Date.now(),
 ) {
   const iso = new Date(now).toISOString();
+  await db.execute({
+    sql: "UPDATE mail_message_recipients SET deleted_at=? WHERE folder='trash' AND deleted_at IS NULL AND julianday(trashed_at)<=julianday(?)",
+    args: [iso, new Date(now - 30 * 86_400_000).toISOString()],
+  });
+  await db.execute({
+    sql: "UPDATE mail_messages SET expires_at=? WHERE state='ready' AND NOT EXISTS(SELECT 1 FROM mail_message_recipients r WHERE r.tenant_id=mail_messages.tenant_id AND r.message_id=mail_messages.id AND r.deleted_at IS NULL)",
+    args: [iso],
+  });
   // Hide expired content first. Physical deletion is idempotent and retried after a storage outage.
   await db.execute({
     sql: "UPDATE mail_messages SET state='expired',sender='',subject='',preview='',message_id=NULL WHERE state='ready' AND julianday(expires_at)<=julianday(?)",
@@ -40,6 +48,14 @@ export async function retainMail(
   await db.execute(
     "UPDATE mail_attachments SET filename='anexo expirado',content_type='application/octet-stream' WHERE EXISTS (SELECT 1 FROM mail_messages m WHERE m.tenant_id=mail_attachments.tenant_id AND m.id=mail_attachments.message_id AND m.state='expired')",
   );
+  await db.execute({
+    sql: `UPDATE mail_objects SET expires_at=? WHERE state!='deleted' AND (EXISTS(SELECT 1 FROM mail_messages m WHERE m.tenant_id=mail_objects.tenant_id AND m.state='expired' AND (m.content_object_id=mail_objects.id OR m.raw_object_id=mail_objects.id)) OR EXISTS(SELECT 1 FROM mail_attachments a JOIN mail_messages m ON m.tenant_id=a.tenant_id AND m.id=a.message_id WHERE a.tenant_id=mail_objects.tenant_id AND a.object_id=mail_objects.id AND m.state='expired'))`,
+    args: [iso],
+  });
+  await db.execute({
+    sql: "DELETE FROM mail_action_limits WHERE julianday(resets_at)<=julianday(?)",
+    args: [iso],
+  });
   const backend = storage ? (storage.durable ? "resend" : "fixture") : null;
   const objects = (
     await db.execute({
@@ -248,9 +264,45 @@ export async function runMailWorker(
       return id;
     }
     const rawId = await put("raw", raw);
+    const headers = Object.fromEntries(
+      Object.entries(message.headers).map(([key, value]) => [
+        key.toLowerCase(),
+        value,
+      ]),
+    );
+    const emails = (values: string[]) =>
+      values.flatMap((value) => {
+        try {
+          return [address(value)];
+        } catch {
+          return [];
+        }
+      });
+    const envelope = {
+      to: emails(message.to),
+      cc: emails(message.cc),
+      bcc: [],
+      replyTo: emails(
+        message.reply_to?.length
+          ? message.reply_to
+          : [headers["reply-to"] ?? ""],
+      ),
+    };
     const contentId = await put(
       "content",
-      Buffer.from(JSON.stringify({ html, text }), "utf8"),
+      Buffer.from(
+        JSON.stringify({
+          html,
+          text,
+          envelope,
+          headers: {
+            References: (headers.references?.match(/<[^<>\s]{1,500}>/g) ?? [])
+              .slice(-10)
+              .join(" "),
+          },
+        }),
+        "utf8",
+      ),
     );
     const attachments: {
       id: string;
@@ -324,12 +376,6 @@ export async function runMailWorker(
           expires,
         ],
       });
-      const headers = Object.fromEntries(
-        Object.entries(message.headers).map(([key, value]) => [
-          key.toLowerCase(),
-          value,
-        ]),
-      );
       const references =
         (headers["in-reply-to"] ?? headers.references ?? "")
           .match(/<[^<>\s]{1,500}>/g)
@@ -341,7 +387,7 @@ export async function runMailWorker(
           const parent = (
             await tx.execute({
               sql: `SELECT r.thread_id FROM mail_message_recipients r JOIN mail_messages m ON m.tenant_id=r.tenant_id AND m.id=r.message_id
-            WHERE r.tenant_id=? AND r.identity_id=? AND m.message_id=? AND m.state='ready' ORDER BY m.received_at LIMIT 1`,
+            WHERE r.tenant_id=? AND r.identity_id=? AND m.message_id=? AND m.state='ready' AND r.deleted_at IS NULL AND m.delivery_status NOT IN ('draft','queued','failed','manual_review') ORDER BY m.received_at LIMIT 1`,
               args: [tenant, recipient.id, reference],
             })
           ).rows[0];
