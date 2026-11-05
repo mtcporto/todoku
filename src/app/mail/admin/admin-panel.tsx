@@ -394,7 +394,7 @@ function OrganizationPanel({
       ) : catalogs ? (
         <div className="admin-grid">
           <section className="admin-card" id="admin-domains">
-            <h2>Domínios administráveis</h2>
+            <h2>Domínios vinculados</h2>
             <ResourceTable
               label="Domínios"
               headers={["Domínio", "Estado"]}
@@ -411,7 +411,9 @@ function OrganizationPanel({
             </ResourceTable>
             {pager("domains")}
             <p className="admin-help">
-              Cadastro e ativação de domínios não fazem parte desta entrega.
+              A lista inclui o domínio pai de caixas do seu escopo. Essa
+              visibilidade não amplia seu papel administrativo. Cadastro e
+              ativação de domínios não fazem parte desta entrega.
             </p>
           </section>
           <section className="admin-card">

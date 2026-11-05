@@ -24,7 +24,7 @@ O Mail mostra **Administração do Mail** quando a sessão informa `canAdministe
 
 O frontend usa as capacidades apenas para navegação. **Todas as leituras/mutações passam pelas APIs existentes**, que revalidam sessão, usuário, tenant, membership e papel. Não há autoridade alternativa no cliente, busca de mensagens/anexos/credenciais ou diretório global por e-mail. Administração não concede leitura de conteúdo.
 
-O seletor contém organizações administráveis. As listas vêm filtradas pelo backend conforme organização/domínio/caixa. Convites e ações de membership aparecem no contexto organizacional indicado pela sessão; chamadas diretas continuam sujeitas aos guards. Papéis, conta global e estados de caixas/domínios são somente de leitura.
+O seletor contém organizações administráveis. As listas vêm filtradas pelo backend conforme organização/domínio/caixa. “Domínios vinculados” inclui o domínio pai visível como metadado para um administrador de caixa, sem sugerir administração desse domínio. Convites e ações de membership aparecem no contexto organizacional indicado pela sessão; chamadas diretas continuam sujeitas aos guards. Papéis, conta global e estados de caixas/domínios são somente de leitura.
 
 Catálogos usam páginas de 25 e **Carregar mais**, com cursor opaco. Os seletores usam registros carregados; o formulário explica como carregar outras opções. IDs são apresentados quando o label relacionado ainda não está carregado; não se informa contagem parcial como total. Tabelas têm região de rolagem acessível por teclado para telas menores.
 
