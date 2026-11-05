@@ -3,6 +3,7 @@ import type { Client, Transaction, Row } from "@libsql/client";
 import { z } from "zod";
 import { Webhook } from "svix";
 import { openSecret, type Keyring } from "../secrets.ts";
+import { allowRecipients } from "./sending-policy.ts";
 import {
   audit,
   body,
@@ -19,7 +20,6 @@ import {
   rateLimit,
   readDraftContent,
   rfcId,
-  type DraftContent,
 } from "./outbound-common.ts";
 
 export const mailSendingEnabled = () =>
@@ -115,18 +115,6 @@ async function config(
   if (!row?.encrypted_api_key)
     throw new MailError("sending_not_configured", 403);
   return row;
-}
-function allowRecipients(content: DraftContent, configuration: Row) {
-  const recipients = [
-    ...content.envelope.to,
-    ...content.envelope.cc,
-    ...content.envelope.bcc,
-  ];
-  const allow = z
-    .array(z.email())
-    .parse(JSON.parse(String(configuration.allowed_recipients_json)));
-  if (!content.envelope.to.length || recipients.some((x) => !allow.includes(x)))
-    throw new MailError("recipient_not_allowed", 403);
 }
 export async function queueMail(
   db: Client,

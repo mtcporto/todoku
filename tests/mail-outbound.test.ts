@@ -26,6 +26,10 @@ import {
 import { retainMail, runMailWorker } from "../src/lib/mail/worker.ts";
 import { sealSecret, openSecret } from "../src/lib/secrets.ts";
 import { validateFile } from "../src/lib/mail/outbound-common.ts";
+import {
+  sendingPolicySchema,
+  updateSendingPolicy,
+} from "../src/lib/mail/sending-policy.ts";
 
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 
@@ -600,6 +604,413 @@ test("disabled sending never calls provider; queue requires allowlist and dedupl
     await assert.rejects(
       saveDraft(f.db, "alice", f.storage, draft({ version: 1 }), saved.id),
       /draft_locked/,
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("external recipient policy allows To/Cc/Bcc and multiple messages while preserving idempotency and credentials", async () => {
+  const f = await fixture();
+  try {
+    await prepare(f);
+    const before = (
+      await f.db.execute("SELECT * FROM mail_sending_configurations")
+    ).rows[0];
+    assert.equal(before.recipient_policy, "allowlist");
+    const policy = {
+      recipientPolicy: "external" as const,
+      allowedRecipients: [],
+      dailyLimit: 20,
+    };
+    assert.equal(
+      (await updateSendingPolicy(f.db, "a", "ia", policy)).changed,
+      true,
+    );
+    assert.equal(
+      (await updateSendingPolicy(f.db, "a", "ia", policy)).changed,
+      false,
+    );
+    const after = (
+      await f.db.execute("SELECT * FROM mail_sending_configurations")
+    ).rows[0];
+    assert.equal(after.encrypted_api_key, before.encrypted_api_key);
+    assert.equal(
+      after.encrypted_webhook_secret,
+      before.encrypted_webhook_secret,
+    );
+    assert.equal(after.status, "enabled");
+    const first = await queued(f, {
+      to: ["new@outside.invalid"],
+      cc: ["copy@outside.invalid"],
+      bcc: ["blind@outside.invalid"],
+    });
+    assert.equal(
+      (
+        await queueMail(
+          f.db,
+          "alice",
+          first.id,
+          "ia",
+          first.version,
+          f.storage,
+          true,
+        )
+      ).duplicate,
+      true,
+    );
+    let calls = 0;
+    const adapter = () => ({
+      send: async (payload: {
+        to: string[];
+        cc?: string[];
+        bcc?: string[];
+      }) => {
+        calls++;
+        assert.deepEqual(payload.to, ["new@outside.invalid"]);
+        assert.deepEqual(payload.cc, ["copy@outside.invalid"]);
+        assert.deepEqual(payload.bcc, ["blind@outside.invalid"]);
+        return { kind: "accepted" as const, id: randomUUID() };
+      },
+    });
+    assert.equal(
+      (
+        await runMailSendWorker(f.db, f.storage, {
+          enabled: true,
+          provider: adapter,
+        })
+      ).state,
+      "accepted",
+    );
+    assert.equal(
+      (
+        await runMailSendWorker(f.db, f.storage, {
+          enabled: true,
+          provider: adapter,
+        })
+      ).processed,
+      0,
+    );
+    await queued(f, { to: ["another@outside.invalid"] });
+    assert.equal(calls, 1);
+    assert.equal(
+      (await f.db.execute("SELECT count(*) AS n FROM mail_send_jobs")).rows[0]
+        .n,
+      2,
+    );
+    assert.equal(
+      (
+        await f.db.execute(
+          "SELECT count(*) AS n FROM mail_audit_log WHERE action='sending_policy_changed'",
+        )
+      ).rows[0].n,
+      1,
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("operational daily quota remains atomic, scoped and retry-safe with external recipients", async () => {
+  const f = await fixture();
+  try {
+    await prepare(f);
+    await updateSendingPolicy(f.db, "a", "ia", {
+      recipientPolicy: "external",
+      allowedRecipients: [],
+      dailyLimit: 2,
+    });
+    const first = await queued(f);
+    const drafts = [
+      await saveDraft(f.db, "alice", f.storage, draft()),
+      await saveDraft(f.db, "alice", f.storage, draft()),
+    ];
+    const attempts = await Promise.all(
+      drafts.map(
+        (x) =>
+          new Promise<{ queued: boolean; error?: string }>(
+            (resolve, reject) => {
+              const worker = new Worker(
+                new URL("./helpers/mail-queue-worker.ts", import.meta.url),
+                {
+                  workerData: {
+                    url: f.url,
+                    id: x.id,
+                    version: x.version,
+                    objects: f.storage.objects,
+                  },
+                },
+              );
+              let result: { queued: boolean; error?: string };
+              worker.on("message", (value) => {
+                result = value;
+              });
+              worker.once("error", reject);
+              worker.once("exit", (code) =>
+                code
+                  ? reject(new Error(`worker exited ${code}`))
+                  : resolve(result),
+              );
+            },
+          ),
+      ),
+    );
+    assert.equal(attempts.filter((x) => x.queued).length, 1);
+    assert.equal(attempts.find((x) => !x.queued)?.error, "send_quota");
+    assert.equal(
+      (
+        await queueMail(
+          f.db,
+          "alice",
+          first.id,
+          "ia",
+          first.version,
+          f.storage,
+          true,
+        )
+      ).duplicate,
+      true,
+    );
+    assert.equal(
+      (await f.db.execute("SELECT count(*) AS n FROM mail_send_jobs")).rows[0]
+        .n,
+      2,
+    );
+    assert.equal(
+      (
+        await f.db.execute(
+          "SELECT count(*) AS n FROM mail_messages WHERE delivery_status='draft'",
+        )
+      ).rows[0].n,
+      1,
+    );
+    await f.db.execute(
+      "UPDATE mail_send_jobs SET created_at='2000-01-01T00:00:00Z'",
+    );
+    await f.db.execute("DELETE FROM mail_action_limits");
+    await queued(f);
+    assert.equal(
+      (await f.db.execute("SELECT count(*) AS n FROM mail_send_jobs")).rows[0]
+        .n,
+      3,
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("external sending retains burst and recipient limits", async () => {
+  const f = await fixture();
+  try {
+    await prepare(f);
+    await updateSendingPolicy(f.db, "a", "ia", {
+      recipientPolicy: "external",
+      allowedRecipients: [],
+      dailyLimit: 20,
+    });
+    for (let i = 0; i < 5; i++) await queued(f);
+    const saved = await saveDraft(f.db, "alice", f.storage, draft());
+    await assert.rejects(
+      queueMail(f.db, "alice", saved.id, "ia", saved.version, f.storage, true),
+      /mail_rate_limited/,
+    );
+    await assert.rejects(
+      saveDraft(
+        f.db,
+        "alice",
+        f.storage,
+        draft({
+          to: Array.from(
+            { length: 11 },
+            (_, i) => `person${i}@outside.invalid`,
+          ),
+        }),
+      ),
+      /too_many_recipients/,
+    );
+    assert.equal(
+      (await f.db.execute("SELECT count(*) AS n FROM mail_send_jobs")).rows[0]
+        .n,
+      5,
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("external policy preserves authentication, grants, tenant isolation and worker revocation checks", async () => {
+  const f = await fixture();
+  try {
+    await prepare(f);
+    await updateSendingPolicy(f.db, "a", "ia", {
+      recipientPolicy: "external",
+      allowedRecipients: [],
+      dailyLimit: 20,
+    });
+    assert.equal((await post(f, "drafts", draft(), "none")).status, 401);
+    assert.equal(
+      (await post(f, "drafts", draft({ identityId: "ib" }))).status,
+      404,
+    );
+    const saved = await queued(f, { to: ["outside@other.invalid"] });
+    await assert.rejects(
+      queueMail(f.db, "bob", saved.id, "ia", saved.version, f.storage, true),
+      /not_found/,
+    );
+    await assert.rejects(
+      updateSendingPolicy(f.db, "b", "ia", {
+        recipientPolicy: "external",
+        allowedRecipients: [],
+        dailyLimit: 20,
+      }),
+      /sending_not_configured/,
+    );
+    await f.db.execute(
+      "UPDATE mail_identity_grants SET can_send=0 WHERE user_id='alice'",
+    );
+    let calls = 0;
+    const result = await runMailSendWorker(f.db, f.storage, {
+      enabled: true,
+      provider: () => ({
+        send: async () => {
+          calls++;
+          return { kind: "accepted", id: randomUUID() };
+        },
+      }),
+    });
+    assert.equal(result.state, "failed");
+    assert.equal(calls, 0);
+    assert.equal(
+      (await f.db.execute("SELECT last_error_code FROM mail_send_jobs")).rows[0]
+        .last_error_code,
+      "sending_not_permitted",
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("external worker still rejects a stored envelope above the recipient limit before transport", async () => {
+  const f = await fixture();
+  try {
+    await prepare(f);
+    await updateSendingPolicy(f.db, "a", "ia", {
+      recipientPolicy: "external",
+      allowedRecipients: [],
+      dailyLimit: 20,
+    });
+    const saved = await queued(f);
+    const object = (
+      await f.db.execute({
+        sql: "SELECT o.object_key FROM mail_messages m JOIN mail_objects o ON o.tenant_id=m.tenant_id AND o.id=m.content_object_id WHERE m.id=?",
+        args: [saved.id],
+      })
+    ).rows[0];
+    const key = String(object.object_key);
+    const content = JSON.parse(
+      Buffer.from(await f.storage.get("a", key)).toString("utf8"),
+    );
+    content.envelope.to = Array.from(
+      { length: 11 },
+      (_, i) => `person${i}@outside.invalid`,
+    );
+    await f.storage.put("a", key, Buffer.from(JSON.stringify(content)));
+    let calls = 0;
+    assert.equal(
+      (
+        await runMailSendWorker(f.db, f.storage, {
+          enabled: true,
+          provider: () => ({
+            send: async () => {
+              calls++;
+              return { kind: "accepted", id: randomUUID() };
+            },
+          }),
+        })
+      ).state,
+      "failed",
+    );
+    assert.equal(calls, 0);
+    assert.equal(
+      (await f.db.execute("SELECT last_error_code FROM mail_send_jobs")).rows[0]
+        .last_error_code,
+      "too_many_recipients",
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("worker rechecks recipient policy after queuing and policy updates are validated and audited atomically", async () => {
+  const f = await fixture();
+  try {
+    await prepare(f);
+    for (const bad of [
+      { recipientPolicy: "external", allowedRecipients: [], dailyLimit: 0 },
+      { recipientPolicy: "external", allowedRecipients: [], dailyLimit: 101 },
+      {
+        recipientPolicy: "external",
+        allowedRecipients: ["someone@outside.invalid"],
+        dailyLimit: 20,
+      },
+      { recipientPolicy: "allowlist", allowedRecipients: [], dailyLimit: 20 },
+      { recipientPolicy: "unknown", allowedRecipients: [], dailyLimit: 20 },
+    ])
+      assert.equal(sendingPolicySchema.safeParse(bad).success, false);
+    await assert.rejects(
+      f.db.execute(
+        "UPDATE mail_sending_configurations SET recipient_policy='unknown'",
+      ),
+    );
+    await updateSendingPolicy(f.db, "a", "ia", {
+      recipientPolicy: "external",
+      allowedRecipients: [],
+      dailyLimit: 20,
+    });
+    await queued(f, { to: ["outside@other.invalid"] });
+    await updateSendingPolicy(f.db, "a", "ia", {
+      recipientPolicy: "allowlist",
+      allowedRecipients: ["limited@outside.invalid"],
+      dailyLimit: 20,
+    });
+    let calls = 0;
+    assert.equal(
+      (
+        await runMailSendWorker(f.db, f.storage, {
+          enabled: true,
+          provider: () => ({
+            send: async () => {
+              calls++;
+              return { kind: "accepted", id: randomUUID() };
+            },
+          }),
+        })
+      ).state,
+      "failed",
+    );
+    assert.equal(calls, 0);
+    const before = (
+      await f.db.execute(
+        "SELECT recipient_policy,daily_limit FROM mail_sending_configurations",
+      )
+    ).rows[0];
+    await f.db.execute(
+      "CREATE TRIGGER fail_policy_audit BEFORE INSERT ON mail_audit_log WHEN NEW.action='sending_policy_changed' BEGIN SELECT RAISE(ABORT,'audit unavailable'); END",
+    );
+    await assert.rejects(
+      updateSendingPolicy(f.db, "a", "ia", {
+        recipientPolicy: "external",
+        allowedRecipients: [],
+        dailyLimit: 50,
+      }),
+    );
+    assert.deepEqual(
+      (
+        await f.db.execute(
+          "SELECT recipient_policy,daily_limit FROM mail_sending_configurations",
+        )
+      ).rows[0],
+      before,
     );
   } finally {
     f.close();
