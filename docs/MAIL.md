@@ -1,5 +1,7 @@
 # Todoku Mail — MVP 1
 
+> O estado abaixo registra a implantação original do MVP 1. O fluxo real de envio e resposta foi validado na [issue #15](https://github.com/mtcporto/todoku/issues/15#issuecomment-6660956829). A primeira entrega do MVP 3 acrescenta [auditoria e proposta de migração](MAIL-MVP3-AUDIT.md) e [Google OIDC opcional](MAIL-GOOGLE-OIDC.md), mantendo o login atual e os limites de envio.
+
 O Mail recebe e lê mensagens de identidades próprias em uma caixa unificada, separado de Notifications. Inclui login real, grants por identidade, filtros por domínio/identidade, paginação, leitura formatada ou em texto, threads por referências e download autenticado de anexos. Não implementa encaminhamento ou resposta/envio real.
 
 ## Estado verificado do piloto

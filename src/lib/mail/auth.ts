@@ -49,7 +49,7 @@ function cookieName(request: Request) {
 function cookie(request: Request, token: string, maxAge: number) {
   return `${cookieName(request)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
 }
-function sessionToken(request: Request) {
+export function sessionToken(request: Request) {
   return (
     request.headers
       .get("cookie")
@@ -72,6 +72,20 @@ export async function requireUser(db: Client, request: Request) {
   ).rows[0];
   if (!row) throw new MailError("unauthorized", 401);
   return { id: String(row.id), username: String(row.username) };
+}
+// Both password and OIDC use opaque, revocable sessions with the same grants.
+export async function createMailSession(
+  db: Pick<Client, "execute">,
+  request: Request,
+  userId: string,
+) {
+  const token = randomBytes(32).toString("base64url");
+  const result = await db.execute({
+    sql: "INSERT INTO mail_sessions(token_hash,user_id,expires_at) SELECT ?,id,? FROM mail_users WHERE id=? AND status='active'",
+    args: [hash(token), new Date(Date.now() + 12 * 3_600_000).toISOString(), userId],
+  });
+  if (result.rowsAffected !== 1) throw new MailError("unauthorized", 401);
+  return cookie(request, token, 43_200);
 }
 export async function authRequest(
   db: Client,
@@ -142,9 +156,8 @@ export async function authRequest(
   );
   if (!valid || !user || user.status !== "active")
     throw new MailError("invalid_credentials", 401);
-  const token = randomBytes(32).toString("base64url");
   // Serialize with password rotation/disable; a completed rotation cannot create a stale session.
-  await transaction(db, async (tx) => {
+  const sessionCookie = await transaction(db, async (tx) => {
     const current = (
       await tx.execute({
         sql: "SELECT id FROM mail_users WHERE id=? AND status='active' AND password_hash=?",
@@ -152,16 +165,9 @@ export async function authRequest(
       })
     ).rows[0];
     if (!current) throw new MailError("invalid_credentials", 401);
-    await tx.execute({
-      sql: "INSERT INTO mail_sessions(token_hash,user_id,expires_at) VALUES (?,?,?)",
-      args: [
-        hash(token),
-        user.id,
-        new Date(now + 12 * 3_600_000).toISOString(),
-      ],
-    });
+    return createMailSession(tx, request, String(user.id));
   });
   return json({ authenticated: true }, 200, {
-    "set-cookie": cookie(request, token, 43_200),
+    "set-cookie": sessionCookie,
   });
 }

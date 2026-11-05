@@ -29,3 +29,4 @@ jobs:
             sleep 1
           done
           npm run smoke:mail:composer
+          npm run smoke:mail:oidc
