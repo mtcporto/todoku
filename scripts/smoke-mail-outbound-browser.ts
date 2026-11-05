@@ -60,7 +60,7 @@ try {
     await dialog
       .getByLabel("Mensagem", { exact: true })
       .fill("Somente conteúdo sintético. Nenhum envio externo.");
-    await dialog.getByLabel("Anexar arquivos").setInputFiles({
+    await dialog.getByLabel("Selecionar anexos").setInputFiles({
       name: "sintetico.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("fixture anexo"),

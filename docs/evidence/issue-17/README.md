@@ -18,6 +18,8 @@ Validação em 2026-11-05, Chromium, build de produção local. A interface usa 
 | Desktop 1440×960 | [Captura](desktop-new.png) | [Captura](desktop-saved.png) | [1440×540](desktop-reduced-viewport.png) |
 | Mobile 390×844 | [Captura](mobile-new.png) | [Captura](mobile-saved.png) | [390×430](mobile-reduced-viewport.png) |
 
+Cc/Cco preservados ao reabrir: [desktop](desktop-reopened.png), [mobile](mobile-reopened.png).
+
 [Resultado estruturado](results.json). Os testes cobrem Cc/Cco, salvar/reabrir/editar, anexar/remover/rejeitar excesso, proteção contra descarte, foco, ausência de overflow, posição dos botões, falha de fila, duplo clique e distinção entre fila e entrega. `typecheck`, os 71 testes existentes e `build` passaram localmente. A CI executa também este teste de navegador após o build.
 
 ## Reproduzir
