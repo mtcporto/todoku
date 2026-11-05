@@ -105,6 +105,8 @@ export async function composeTemplate(
           })
         ).rows
       : [];
+  await identityGrant(db, user, identity, "send");
+  await messageGrant(db, user, id, identity);
   return {
     identityId: identity,
     ...envelope,
@@ -265,6 +267,8 @@ export async function saveDraft(
         args: [tenant, id],
       })
     ).rows;
+    await messageGrant(db, user, id, input.identityId);
+    await identityGrant(db, user, input.identityId, "send");
     return {
       id,
       version: Number(current.draft_version),
@@ -322,7 +326,10 @@ export async function saveDraft(
     });
   await transaction(db, async (tx) => {
     await identityGrant(tx, user, input.identityId, "send");
+    if (input.reply)
+      await messageGrant(tx, user, input.reply.messageId, input.identityId);
     if (current) {
+      await messageGrant(tx, user, id, input.identityId);
       const updated = await tx.execute({
         sql: "UPDATE mail_messages SET subject=?,preview=?,content_object_id=?,raw_object_id=?,draft_fingerprint=?,draft_version=draft_version+1,expires_at=? WHERE tenant_id=? AND id=? AND direction='outbound' AND delivery_status='draft' AND draft_version=? AND state='ready' AND EXISTS(SELECT 1 FROM mail_message_recipients r WHERE r.tenant_id=mail_messages.tenant_id AND r.message_id=mail_messages.id AND r.identity_id=? AND r.folder='drafts' AND r.deleted_at IS NULL)",
         args: [
@@ -360,7 +367,7 @@ export async function saveDraft(
       });
     } else {
       await tx.execute({
-        sql: "INSERT INTO mail_messages(tenant_id,id,source_id,provider_email_id,message_id,sender,subject,preview,authentication,content_object_id,raw_object_id,received_at,expires_at,direction,delivery_status,draft_fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'outbound','draft',?)",
+        sql: "INSERT INTO mail_messages(tenant_id,id,source_id,provider_email_id,message_id,sender,subject,preview,authentication,content_object_id,raw_object_id,received_at,expires_at,direction,delivery_status,draft_fingerprint,author_user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'outbound','draft',?,?)",
         args: [
           tenant,
           id,
@@ -376,6 +383,7 @@ export async function saveDraft(
           now,
           expires,
           fingerprint,
+          user,
         ],
       });
       if (!threadId) {

@@ -1,4 +1,4 @@
-import type { Client, Transaction, Row } from "@libsql/client";
+import type { Client, Row } from "@libsql/client";
 import { z } from "zod";
 import { address, MailError, limits, filename, transaction } from "./common.ts";
 import type { MailStorage } from "./storage.ts";
@@ -47,35 +47,7 @@ export function recipients(input: {
     throw new MailError("too_many_recipients", 422);
   return result;
 }
-export async function identityGrant(
-  db: Pick<Client, "execute"> | Transaction,
-  userId: string,
-  identityId: string,
-  action: "read" | "send" | "manage" = "read",
-) {
-  const row = (
-    await db.execute({
-      sql: `SELECT i.*,d.source_id,d.status AS domain_status,s.status AS source_status,s.provider,s.retention_days,g.can_send,g.can_manage
- FROM mail_identity_grants g JOIN mail_identities i ON i.tenant_id=g.tenant_id AND i.id=g.identity_id
- JOIN mail_domains d ON d.tenant_id=i.tenant_id AND d.id=i.domain_id JOIN mail_sources s ON s.tenant_id=d.tenant_id AND s.id=d.source_id
- JOIN tenants t ON t.id=i.tenant_id JOIN mail_users u ON u.id=g.user_id
- WHERE g.user_id=? AND i.id=? AND t.status='active' AND u.status='active'`,
-      args: [userId, identityId],
-    })
-  ).rows[0];
-  if (!row) throw new MailError("not_found", 404);
-  if (
-    action === "send" &&
-    (!row.can_send ||
-      row.status !== "active" ||
-      row.domain_status !== "active" ||
-      row.source_status !== "active")
-  )
-    throw new MailError("sending_not_permitted", 403);
-  if (action === "manage" && !row.can_manage)
-    throw new MailError("management_not_permitted", 403);
-  return row;
-}
+export { identityGrant, messageGrant } from "./authorization.ts";
 export async function rateLimit(
   db: Client,
   tenant: string,
@@ -109,26 +81,6 @@ export async function rateLimit(
       ],
     });
   });
-}
-export async function messageGrant(
-  db: Pick<Client, "execute"> | Transaction,
-  user: string,
-  id: string,
-  identity: string | null,
-) {
-  const row = (
-    await db.execute({
-      sql: `SELECT m.*,r.identity_id,r.folder,r.previous_folder,r.deleted_at,r.thread_id,r.trashed_at,g.can_send,g.can_manage,s.provider
- FROM mail_messages m JOIN mail_message_recipients r ON r.tenant_id=m.tenant_id AND r.message_id=m.id
- JOIN mail_identity_grants g ON g.tenant_id=r.tenant_id AND g.identity_id=r.identity_id
- JOIN mail_sources s ON s.tenant_id=m.tenant_id AND s.id=m.source_id JOIN tenants t ON t.id=m.tenant_id JOIN mail_users u ON u.id=g.user_id
- WHERE m.id=? AND g.user_id=? AND (? IS NULL OR r.identity_id=?) AND r.deleted_at IS NULL AND m.state='ready' AND julianday(m.expires_at)>julianday('now') AND t.status='active' AND u.status='active' LIMIT 1`,
-      args: [id, user, identity, identity],
-    })
-  ).rows[0];
-  if (!row || (row.delivery_status === "draft" && !row.can_send))
-    throw new MailError("not_found", 404);
-  return row;
 }
 export function requireStorage(storage: MailStorage | null, identity: Row) {
   if (!storage || (identity.provider === "resend") !== storage.durable)

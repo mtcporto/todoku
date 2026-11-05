@@ -93,6 +93,10 @@ try {
       args: [user, `fixture-${source.slice(0, 8)}`, stored],
     });
     await tx.execute({
+      sql: "INSERT INTO mail_memberships(tenant_id,user_id) VALUES (?,?)",
+      args: [tenant, user],
+    });
+    await tx.execute({
       sql: "INSERT INTO mail_sources(tenant_id,id,provider,status,encrypted_webhook_secret) VALUES (?,?,'fixture','active',?)",
       args: [
         tenant,
@@ -120,7 +124,7 @@ try {
         args: [tenant, id, domain, `${local}@${localDomain}`, label],
       });
       await tx.execute({
-        sql: "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id,can_send,can_manage) VALUES (?,?,?,1,1)",
+        sql: "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id,can_read,can_send,can_manage) VALUES (?,?,?,1,1,1)",
         args: [tenant, id, user],
       });
     }

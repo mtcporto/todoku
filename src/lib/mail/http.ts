@@ -2,7 +2,14 @@ import { timingSafeEqual, createHash } from "node:crypto";
 import type { Client, Row } from "@libsql/client";
 import { z } from "zod";
 import { authRequest, requireUser, sameOrigin } from "./auth.ts";
-import { body, filename, json, MailError, limits } from "./common.ts";
+import {
+  body,
+  filename,
+  json,
+  MailError,
+  limits,
+  transaction,
+} from "./common.ts";
 import { readerDocument } from "./content.ts";
 import { mailStorage, type MailStorage } from "./storage.ts";
 import { runMailWorker } from "./worker.ts";
@@ -14,12 +21,11 @@ import {
 } from "./outbound-common.ts";
 import { mailSendingEnabled, runMailSendWorker } from "./send.ts";
 
-const unexpired = `m.state='ready' AND julianday(m.expires_at)>julianday('now') AND t.status='active'`;
-const visible = `${unexpired} AND r.deleted_at IS NULL AND (m.delivery_status!='draft' OR g.can_send=1)`;
-const joins = `FROM mail_messages m JOIN mail_message_recipients r ON r.tenant_id=m.tenant_id AND r.message_id=m.id
- JOIN mail_identity_grants g ON g.tenant_id=r.tenant_id AND g.identity_id=r.identity_id
- JOIN mail_identities i ON i.tenant_id=r.tenant_id AND i.id=r.identity_id JOIN mail_domains d ON d.tenant_id=i.tenant_id AND d.id=i.domain_id
- JOIN tenants t ON t.id=m.tenant_id`;
+import {
+  contentJoins as joins,
+  contentVisible as visible,
+  canManageMessage,
+} from "./authorization.ts";
 async function access(
   db: Client,
   userId: string,
@@ -94,12 +100,12 @@ export async function mailRequest(
         throw new MailError("invalid_filter");
       const identities = (
         await db.execute({
-          sql: `SELECT i.id,i.address,i.label,i.status,d.id AS domain_id,d.name AS domain,s.provider,s.status AS receiving_status,g.can_send,g.can_manage,
-        CASE WHEN c.status='enabled' AND c.encrypted_api_key IS NOT NULL AND i.status='active' THEN 1 ELSE 0 END AS sending_configured
+          sql: `SELECT i.id,i.address,i.label,i.status,d.id AS domain_id,d.name AS domain,s.provider,s.status AS receiving_status,g.can_read,g.can_send,g.can_manage,
+        CASE WHEN c.status='enabled' AND c.encrypted_api_key IS NOT NULL AND i.status='active' AND d.status='active' AND s.status='active' THEN 1 ELSE 0 END AS sending_configured
         FROM mail_identity_grants g JOIN mail_identities i ON i.tenant_id=g.tenant_id AND i.id=g.identity_id
         JOIN mail_domains d ON d.tenant_id=i.tenant_id AND d.id=i.domain_id JOIN mail_sources s ON s.tenant_id=d.tenant_id AND s.id=d.source_id
         LEFT JOIN mail_sending_configurations c ON c.tenant_id=i.tenant_id AND c.identity_id=i.id
-        JOIN tenants t ON t.id=i.tenant_id WHERE g.user_id=? AND t.status='active' ORDER BY d.name,i.address`,
+        JOIN tenants t ON t.id=i.tenant_id JOIN mail_memberships membership ON membership.tenant_id=g.tenant_id AND membership.user_id=g.user_id WHERE g.user_id=? AND t.status='active' AND membership.status='active' ORDER BY d.name,i.address`,
           args: [user.id],
         })
       ).rows;
@@ -149,16 +155,22 @@ export async function mailRequest(
         const input = z
           .strictObject({ read: z.boolean() })
           .parse(JSON.parse(await body(request, 256)));
-        await db.execute({
-          sql: `UPDATE mail_message_recipients SET is_read=? WHERE tenant_id=? AND message_id=? AND identity_id=?
-          AND EXISTS (SELECT 1 FROM mail_identity_grants g WHERE g.tenant_id=mail_message_recipients.tenant_id AND g.identity_id=mail_message_recipients.identity_id AND g.user_id=?)`,
-          args: [
-            input.read ? 1 : 0,
-            message.tenant_id,
-            id,
-            message.identity_id,
+        await transaction(db, async (tx) => {
+          const current = await messageGrant(
+            tx,
             user.id,
-          ],
+            id,
+            String(message.identity_id),
+          );
+          await tx.execute({
+            sql: "UPDATE mail_message_recipients SET is_read=? WHERE tenant_id=? AND message_id=? AND identity_id=?",
+            args: [
+              input.read ? 1 : 0,
+              current.tenant_id,
+              id,
+              current.identity_id,
+            ],
+          });
         });
         return json({ updated: true });
       }
@@ -191,6 +203,12 @@ export async function mailRequest(
             ],
           })
         ).rows;
+        const current = await messageGrant(
+          db,
+          user.id,
+          id,
+          String(message.identity_id),
+        );
         return json({
           id,
           subject: message.subject,
@@ -202,17 +220,17 @@ export async function mailRequest(
           direction: message.direction,
           deliveryStatus: message.delivery_status,
           version: message.draft_version,
-          canSend: Boolean(message.can_send),
-          canManage: Boolean(message.can_manage),
+          canSend: Boolean(current.can_send),
+          canManage: canManageMessage(current, user.id),
           to: content.envelope.to,
           cc: content.envelope.cc,
           bcc:
-            message.direction === "outbound" && message.can_send
+            message.direction === "outbound" && current.can_send
               ? content.envelope.bcc
               : [],
           reply: content.reply,
           html:
-            message.delivery_status === "draft" && message.can_send
+            message.delivery_status === "draft" && current.can_send
               ? content.html
               : "",
           text: content.text,
@@ -230,12 +248,11 @@ export async function mailRequest(
     ) {
       const attachment = (
         await db.execute({
-          sql: `SELECT a.filename,a.size,o.object_key,o.tenant_id,s.provider FROM mail_attachments a
-        JOIN mail_objects o ON o.tenant_id=a.tenant_id AND o.id=a.object_id JOIN mail_messages m ON m.tenant_id=a.tenant_id AND m.id=a.message_id
-        JOIN tenants t ON t.id=m.tenant_id JOIN mail_sources s ON s.tenant_id=m.tenant_id AND s.id=m.source_id WHERE a.id=? AND o.state='ready' AND ${unexpired}
-        AND EXISTS (SELECT 1 FROM mail_message_recipients r JOIN mail_identity_grants g ON g.tenant_id=r.tenant_id AND g.identity_id=r.identity_id
-          WHERE r.tenant_id=m.tenant_id AND r.message_id=m.id AND g.user_id=? AND r.deleted_at IS NULL AND (m.delivery_status!='draft' OR g.can_send=1)) LIMIT 1`,
-          args: [id, user.id],
+          sql: `SELECT a.filename,a.size,o.object_key,o.tenant_id,s.provider,m.id AS message_id,r.identity_id
+          ${joins} JOIN mail_attachments a ON a.tenant_id=m.tenant_id AND a.message_id=m.id
+          JOIN mail_objects o ON o.tenant_id=a.tenant_id AND o.id=a.object_id
+          WHERE a.id=? AND g.user_id=? AND (? IS NULL OR r.identity_id=?) AND o.state='ready' AND ${visible} LIMIT 1`,
+          args: [id, user.id, identity, identity],
         })
       ).rows[0];
       if (!attachment) throw new MailError("not_found", 404);
@@ -251,6 +268,12 @@ export async function mailRequest(
         value.length !== Number(attachment.size)
       )
         throw new MailError("attachment_unavailable", 503);
+      await messageGrant(
+        db,
+        user.id,
+        String(attachment.message_id),
+        String(attachment.identity_id),
+      );
       const encoded = encodeURIComponent(
         filename(String(attachment.filename)),
       ).replace(/['()*]/g, (x) => "%" + x.charCodeAt(0).toString(16));

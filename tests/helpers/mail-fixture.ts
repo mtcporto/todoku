@@ -161,7 +161,8 @@ export async function fixture() {
         args: [source, otherSource],
       },
       "INSERT INTO mail_identities(tenant_id,id,domain_id,address,label,status) VALUES ('a','ia','da','inbox@a.example.invalid','Inbox','active'),('a','private','da','private@a.example.invalid','Private','active'),('b','ib','db','inbox@b.example.invalid','Other','active')",
-      "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id) VALUES ('a','ia','alice'),('b','ib','bob')",
+      "INSERT INTO mail_memberships(tenant_id,user_id) VALUES ('a','alice'),('b','bob')",
+      "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id,can_read) VALUES ('a','ia','alice',1),('b','ib','bob',1)",
     ],
     "write",
   );

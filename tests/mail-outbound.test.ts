@@ -327,7 +327,7 @@ test("outbound requires explicit send/manage grants, authentication, same origin
     );
     assert.equal(
       (await post(f, `messages/${saved.id}/trash?identity=ia`, {})).status,
-      403,
+      200, // Authors may discard their own draft without managing mailbox messages.
     );
   } finally {
     f.close();
@@ -1257,7 +1257,7 @@ test("trash/restore/purge are per identity, require confirmation and retry priva
     );
     await f.db.batch(
       [
-        "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id,can_manage) VALUES ('a','private','alice',1)",
+        "INSERT INTO mail_identity_grants(tenant_id,identity_id,user_id,can_read,can_manage) VALUES ('a','private','alice',1,1)",
         "INSERT INTO mail_threads(tenant_id,id,identity_id) VALUES ('a','private-thread','private')",
         {
           sql: "INSERT INTO mail_message_recipients(tenant_id,message_id,identity_id,thread_id) VALUES ('a',?,'private','private-thread')",
