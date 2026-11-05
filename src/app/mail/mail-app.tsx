@@ -106,6 +106,12 @@ export default function MailApp() {
     [password, setPassword] = useState(""),
     [signing, setSigning] = useState(false),
     [loginError, setLoginError] = useState("");
+  const [googleAccess, setGoogleAccess] = useState({
+    enabled: false,
+    canLink: false,
+    linked: false,
+  });
+  const [googleError, setGoogleError] = useState("");
   const [inbox, setInbox] = useState<Inbox>(emptyInbox),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
@@ -130,6 +136,37 @@ export default function MailApp() {
   const heading = useRef<HTMLHeadingElement>(null),
     reader = useRef<HTMLElement>(null);
   const composeTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("authError") === "google") {
+      setGoogleError(
+        "Não foi possível concluir o acesso Google. Use seu usuário e senha; o primeiro vínculo deve ser feito após entrar com esse acesso.",
+      );
+      url.searchParams.delete("authError");
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/mail/oidc/google/status", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted)
+          setGoogleAccess({
+            enabled: data.enabled === true,
+            canLink: data.canLink === true,
+            linked: data.linked === true,
+          });
+      })
+      .catch(() => {
+        /* Password access remains available if OIDC is unavailable. */
+      });
+    return () => controller.abort();
+  }, [user?.username]);
   function signedOut() {
     setSendNotice("");
     setUser(null);
@@ -418,6 +455,18 @@ export default function MailApp() {
           </div>
         </div>
         <div className="login-form-wrap">
+          {googleAccess.enabled ? (
+            <form
+              action="/api/mail/oidc/google/start"
+              method="post"
+              className="google-login"
+            >
+              <button className="secondary-button" type="submit">
+                Entrar com Google
+              </button>
+              <p>Ou use seu acesso atual abaixo.</p>
+            </form>
+          ) : null}
           <form onSubmit={login} className="login-form">
             <span className="eyebrow">BEM-VINDO DE VOLTA</span>
             <h2>Entre na sua caixa</h2>
@@ -443,9 +492,9 @@ export default function MailApp() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            {loginError ? (
+            {loginError || googleError ? (
               <div className="mail-error" role="alert">
-                {loginError}
+                {loginError || googleError}
               </div>
             ) : null}
             <button className="primary-button" type="submit" disabled={signing}>
@@ -545,6 +594,16 @@ export default function MailApp() {
             <p>Suas conversas, no mesmo lugar.</p>
           </div>
           <div className="toolbar-actions">
+            {googleAccess.canLink ? (
+              <form action="/api/mail/oidc/google/link" method="post">
+                <button className="secondary-button" type="submit">
+                  Vincular Google
+                </button>
+              </form>
+            ) : null}
+            {googleAccess.linked ? (
+              <span className="google-linked">Google vinculado</span>
+            ) : null}
             <button
               className="compose-button"
               onClick={composeNew}
@@ -576,6 +635,11 @@ export default function MailApp() {
             </button>
           </div>
         </header>
+        {googleError ? (
+          <div className="mail-error" role="alert">
+            {googleError}
+          </div>
+        ) : null}
         <nav className="mail-folders" aria-label="Pastas">
           {(Object.entries(folders) as [Folder, string][]).map(
             ([key, label]) => (

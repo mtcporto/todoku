@@ -107,6 +107,8 @@ try {
         route.fulfill({ status, json: body });
       if (url.pathname === "/api/mail/session")
         return respond({ user: { username: "UX fixture" } });
+      if (url.pathname === "/api/mail/oidc/google/status")
+        return respond({ enabled: false, canLink: false, linked: false });
       if (url.pathname === "/api/mail/inbox") {
         const folder = url.searchParams.get("folder");
         return respond({

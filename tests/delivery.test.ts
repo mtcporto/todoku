@@ -51,7 +51,12 @@ function req(body: unknown, value = token) {
 async function enqueue(db: Client, data = payload()) {
   const response = await handleEventRequest(req(data), () => db);
   assert.equal(response.status, 202, await response.clone().text());
-  return response.json();
+  const accepted = await response.json();
+  // SQLite's Windows clock can be a millisecond ahead of Date.now(). These
+  // delivery tests need a ready job, not a race between the two clock sources.
+  await db.execute({ sql: "UPDATE outbox_messages SET available_at = ? WHERE event_id = ?",
+    args: [new Date(Date.now() - 1000).toISOString(), accepted.eventId] });
+  return accepted;
 }
 const factory = (send: (input: SendInput) => Promise<SendResult>) => () => ({ channel: "email" as const, name: "resend", send });
 function signed(type: string, secret = webhookSecret, id = randomUUID(), date = new Date(), emailId = providerId) {
