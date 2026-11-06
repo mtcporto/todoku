@@ -15,6 +15,11 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 
 ## 1. Fluxo Conceitual
 
+O [MVP funcional do Hub](docs/HUB-MVP.md) está em PRs para revisão: catálogo de
+templates por aplicação, painel mínimo `/hub` e piloto de boas-vindas do
+MinhaNota, validados localmente em dry-run. Isso ainda não representa publicação,
+migração remota ou autorização de envio real.
+
 A arquitetura do Todoku baseia-se na separação entre a geração do evento pela aplicação de origem e a execução da entrega ao destinatário:
 
 $$\text{Aplicação} \longrightarrow \text{Evento} \longrightarrow \text{Todoku} \longrightarrow \text{Provedor} \longrightarrow \text{Destinatário}$$

@@ -109,3 +109,33 @@ allowlist, orçamento e evento **novo**. Simulações terminam em `dry_run`/fila
 
 SSO, agendamento avançado, marketing, outros provedores e onboarding universal
 continuam adiados. Todoku Mail não é parte desta implementação.
+
+## Interface e evidências locais
+
+`/hub` permite selecionar organização/aplicação, adotar o catálogo, cadastrar
+aplicação em dry-run, criar versões, associar/ativar/desativar eventos, visualizar
+prévia e consultar estados/erros/auditoria. Login por senha reutiliza a sessão
+existente; uma sessão Google já aberta também é reconhecida. Não há novo fluxo
+OIDC nem papel derivado do endereço de e-mail.
+
+Confirmações capturam caminho e payload completos antes de abrir o diálogo;
+enquanto aberto, os controles externos ficam inertes pelo modal nativo.
+Confirmação envia o snapshot exibido, sem reler formulários ou catálogos. Contextos
+de organização/aplicação têm estado separado e requests cancelados ao sair.
+Credenciais novas só aparecem uma vez, sem armazenamento no navegador.
+
+Validações executadas nesta entrega: 159 testes automatizados do Hub/Mail,
+typecheck e build; `npm run smoke:hub` em 1280×900 e 390×844, com handlers reais
+contra fixtures libSQL isoladas. Cobertura de senha/logout/revogação, adoção
+desabilitada, versão, formulário editado antes da confirmação, igualdade
+diálogo/request, cancelamento, modal por teclado, troca de organização e ausência
+de overflow horizontal. As cinco suítes de UI existentes do Mail também passaram
+localmente; o CI repete as seis suítes. Screenshots/evidências sanitizadas ficam localmente
+em `.vercel/hub-ui`, fora do Git.
+
+`npm run smoke:hub:consumer -- <caminho/minhanota/src/lib/email/todoku.ts>` executa
+o consumidor **real** por HTTP loopback, com bancos separados do Hub e MinhaNota.
+A perda simulada do recibo após commit produz 202/replay, um evento, uma tentativa,
+`minhanota.welcome@1`, estado `dry_run`, auditoria e integridade OK. Nenhuma
+chamada externa de e-mail ou mutação remota. Esse teste cruzado exige os dois
+checkouts revisados; o CI de cada repositório testa sua própria implementação.

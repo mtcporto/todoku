@@ -33,6 +33,8 @@
     "smoke:mail:invitations": "node --experimental-strip-types scripts/smoke-mail-invitations-ui.ts",
     "smoke:mail:admin": "node scripts/smoke-mail-admin.mjs",
     "smoke:mail:profile": "node scripts/smoke-mail-profile.mjs",
+    "smoke:hub": "node scripts/smoke-hub.mjs",
+    "smoke:hub:consumer": "node scripts/smoke-hub-consumer.mjs",
     "mail:fixture:cleanup": "node --env-file=.env.local --env-file=.env.mail-fixture.local --experimental-strip-types scripts/cleanup-mail-fixture.ts"
   },
   "dependencies": {
