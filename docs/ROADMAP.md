@@ -18,7 +18,7 @@
 | Filas, cron e reagendamento de tentativas | **Implementados** como infraestrutura de processamento/retry | Auditar execução e observabilidade com evidências; não presumir dashboard pronto |
 | Agendamento futuro solicitado pela aplicação consumidora | **Planejado; não suportado pelo contrato atual de ingestão** | Definir campo/semântica da data futura, validação, políticas, persistência e testes antes de oferecer a capacidade |
 | Preferências de destinatário, anti-fatigue e opt-out | Evolução planejada | Definir contrato e persistência antes da UI |
-| MVP funcional do Hub | Implementado em PRs para revisão: catálogo por aplicação, API administrativa, painel mínimo e piloto MinhaNota; validado localmente em dry-run | [Diagnóstico, sequência de PRs e validação](HUB-MVP.md); sem merge, migração remota ou envio real automático |
+| MVP funcional do Hub | Backend e catálogo integrados na #31 (`28d0c477`); painel #32 em revisão e piloto MinhaNota validado localmente em dry-run | [Diagnóstico, sequência de PRs e validação](HUB-MVP.md); integração do código não implica migração remota ou envio real automático |
 | Painel de administração do Hub | Interface mínima em `/hub`, em revisão; **não confundir** com `/mail/admin` | Configuração de aplicações/templates e consulta de estados; dashboard sofisticado adiado |
 | Adaptadores adicionais (SMS, WhatsApp, push, outros provedores) | Ideias futuras | Avaliar necessidade real, custos e compliance por canal |
 | Integrações com apps consumidoras | Piloto escolhido: boas-vindas do MinhaNota | Reutilizar o fluxo existente, substituir Resend direto e validar ingestão → template → worker → status em dry-run |

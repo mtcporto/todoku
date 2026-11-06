@@ -14,8 +14,11 @@ ativação individual, operação visual do Hub e consumidor real. Sequência de
 2. Interface mínima `/hub`, separada de `/mail/admin`.
 3. Boas-vindas do MinhaNota consumindo a API; validação integrada em dry-run.
 
-Essas entregas estão **em revisão**, não publicadas. A documentação canônica
-depende da PR #30, usada como base das PRs do Hub, sem merge automático.
+A documentação canônica da PR #30 foi integrada por squash em `992590fa`.
+A base de configuração/API da PR #31 também foi integrada à `main`, no commit
+`28d0c47782125dc55c227c296adabfdcea15b92f`. O painel da PR #32 permanece
+**em revisão**, sincronizado com essa base. Integração do código não comprova
+migração remota, configuração operacional do piloto ou autorização de envio real.
 
 ## Configuração e compatibilidade
 
@@ -141,11 +144,13 @@ A perda simulada do recibo após commit produz 202/replay, um evento, uma tentat
 chamada externa de e-mail ou mutação remota. Esse teste cruzado exige os dois
 checkouts revisados; o CI de cada repositório testa sua própria implementação.
 
-PRs para revisão: [backend #31](https://github.com/mtcporto/todoku/pull/31),
+Referências: [backend #31, integrado](https://github.com/mtcporto/todoku/pull/31),
 [painel #32](https://github.com/mtcporto/todoku/pull/32) e
 [consumidor MinhaNota #3](https://github.com/mtcporto/minhanota/pull/3).
-Backend depende da documentação #30; painel depende do backend. Os três
-Previews automáticos chegaram a READY nos commits correspondentes. A interface
+Documentação #30 e backend #31 já estão na `main`; a PR #32 compara somente o
+painel, seus scripts de validação e documentação com essa base. Como evidência
+histórica da preparação, os três Previews automáticos chegaram a READY nos
+commits correspondentes. A interface
 publicada do painel foi testada também no Preview protegido, com autenticação
 Vercel restrita à origem e todas as APIs desviadas para fixtures locais. Isso
 valida o build publicado, **não** uma configuração operacional remota do piloto.
