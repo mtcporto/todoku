@@ -129,7 +129,8 @@ typecheck e build; `npm run smoke:hub` em 1280×900 e 390×844, com handlers rea
 contra fixtures libSQL isoladas. Cobertura de senha/logout/revogação, adoção
 desabilitada, versão, formulário editado antes da confirmação, igualdade
 diálogo/request, cancelamento, modal por teclado, troca de organização e ausência
-de overflow horizontal. As cinco suítes de UI existentes do Mail também passaram
+de overflow horizontal, estados de mensagens e falhas sem exposição de conteúdo.
+As cinco suítes de UI existentes do Mail também passaram
 localmente; o CI repete as seis suítes. Screenshots/evidências sanitizadas ficam localmente
 em `.vercel/hub-ui`, fora do Git.
 
@@ -139,3 +140,12 @@ A perda simulada do recibo após commit produz 202/replay, um evento, uma tentat
 `minhanota.welcome@1`, estado `dry_run`, auditoria e integridade OK. Nenhuma
 chamada externa de e-mail ou mutação remota. Esse teste cruzado exige os dois
 checkouts revisados; o CI de cada repositório testa sua própria implementação.
+
+PRs para revisão: [backend #31](https://github.com/mtcporto/todoku/pull/31),
+[painel #32](https://github.com/mtcporto/todoku/pull/32) e
+[consumidor MinhaNota #3](https://github.com/mtcporto/minhanota/pull/3).
+Backend depende da documentação #30; painel depende do backend. Os três
+Previews automáticos chegaram a READY nos commits correspondentes. A interface
+publicada do painel foi testada também no Preview protegido, com autenticação
+Vercel restrita à origem e todas as APIs desviadas para fixtures locais. Isso
+valida o build publicado, **não** uma configuração operacional remota do piloto.

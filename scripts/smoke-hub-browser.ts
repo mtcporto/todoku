@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { createClient } from "@libsql/client";
 import { chromium } from "playwright";
 import { migrate } from "../src/lib/migrations.ts";
@@ -9,6 +9,9 @@ import { passwordHash } from "../src/lib/mail/auth.ts";
 import { hubRequest } from "../src/lib/hub/http.ts";
 import { bootstrapHubAdministrator } from "../src/lib/hub/administration.ts";
 import { provisionConfiguration } from "../src/lib/configurations.ts";
+import { hashCredential } from "../src/lib/ingestion.ts";
+import { handleEventRequest } from "../src/lib/http.ts";
+import { runWorker } from "../src/lib/worker.ts";
 
 const origin = new URL(process.env.TODOKU_UX_ORIGIN ?? "http://127.0.0.1:3039").origin;
 const browser = await chromium.launch({ headless: true });
@@ -20,12 +23,13 @@ try {
     const db = createClient({ url: `file:${join(directory, "test.db").replaceAll("\\", "/")}` });
     await db.execute("PRAGMA journal_mode=WAL");
     await migrate(db, "migrations");
-    const owner = randomUUID();
+    const owner = randomUUID(), applicationToken = randomBytes(32).toString("base64url");
     const password = "local-only-fixture-password";
     await db.batch([
       "INSERT INTO tenants(id) VALUES ('hub-a'),('hub-b')",
       "INSERT INTO applications(tenant_id,id) VALUES ('hub-a','pilot'),('hub-b','other')",
       { sql: "INSERT INTO mail_users(id,username,password_hash) VALUES (?,?,?)", args: [owner, "hub-owner", await passwordHash(password)] },
+      { sql: "INSERT INTO application_credentials(tenant_id,application_id,id,token_hash) VALUES ('hub-a','pilot',?,?)", args: [randomUUID(), hashCredential(applicationToken)] },
     ], "write");
     await bootstrapHubAdministrator(db, "hub-a", owner, owner, true);
     await bootstrapHubAdministrator(db, "hub-b", owner, owner, true);
@@ -36,7 +40,11 @@ try {
     await context.route("**/*", async route => {
       const req = route.request(), url = new URL(req.url());
       if (url.origin !== origin) { errors.push("external network request"); return route.abort(); }
-      if (!url.pathname.startsWith("/api/")) return route.continue();
+      if (!url.pathname.startsWith("/api/")) return route.continue(
+        process.env.VERCEL_OIDC_TOKEN && url.hostname.endsWith(".vercel.app")
+          ? { headers: { ...req.headers(), "x-vercel-trusted-oidc-idp-token": process.env.VERCEL_OIDC_TOKEN } }
+          : undefined,
+      );
       if (!url.pathname.startsWith("/api/hub/")) { errors.push("unexpected API"); return route.abort(); }
       const path = url.pathname.slice("/api/hub/".length);
       const response = await hubRequest(new Request(req.url(), { method: req.method(), headers: await req.allHeaders(), ...(req.postData() ? { body: req.postData()! } : {}) }), path.split("/"), db);
@@ -88,6 +96,22 @@ try {
       await page.getByLabel("Prévia renderizada").waitFor();
       assert.ok((await page.getByLabel("Prévia renderizada").innerText()).includes("Olá Exemplo!"));
       assert.equal((await db.execute("SELECT count(*) AS n FROM events")).rows[0].n, 0);
+      async function enqueue() {
+        const response = await handleEventRequest(new Request(`${origin}/api/v1/events`, { method: "POST", headers: { authorization: `Bearer ${applicationToken}`, "content-type": "application/json" }, body: JSON.stringify({ id: randomUUID(), type: "user.welcome", occurredAt: new Date().toISOString(), tenantId: "hub-a", applicationId: "pilot", recipient: { email: "fixture@example.invalid" }, data: { firstName: "Private fixture name" }, idempotencyKey: randomUUID() }) }), () => db);
+        assert.equal(response.status, 202);
+        await db.execute("UPDATE outbox_messages SET available_at='2020-01-01T00:00:00Z'");
+      }
+      const workerOptions = { mode: "dry_run" as const, providerFactory: () => { throw new Error("No external transport"); } };
+      await enqueue();
+      assert.deepEqual((await runWorker(db, workerOptions)).states, ["dry_run"]);
+      await enqueue();
+      await page.getByRole("button", { name: "Desabilitar user.welcome", exact: true }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Confirmar alteração" }).click();
+      await page.getByRole("button", { name: "Habilitar user.welcome", exact: true }).waitFor();
+      assert.deepEqual((await runWorker(db, workerOptions)).states, ["manual_review"]);
+      await page.getByRole("button", { name: "Atualizar dados" }).click();
+      await page.getByText("Falha: communication_disabled", { exact: true }).waitFor();
+      assert.ok(!(await page.innerText("body")).includes("Private fixture name"));
       await page.screenshot({ path: `.vercel/hub-ui/${viewport.width}.png`, fullPage: true });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
       await page.getByRole("combobox", { name: /^Organização/ }).selectOption("hub-b");
@@ -100,7 +124,7 @@ try {
       await page.getByRole("heading", { name: "Entrar no Hub" }).waitFor();
       assert.ok((await db.execute("SELECT revoked_at FROM mail_sessions")).rows[0].revoked_at);
       assert.deepEqual(errors, []);
-      evidence.push({ viewport, realHandlers: true, isolatedSqlite: true, loginLogout: true, catalogAdoptionDisabled: true, confirmationMatchesRequest: true, editedForm: true, keyboardModal: true, cancellation: true, immutableTemplateVersion: true, previewNoEvent: true, tenantSwitch: true, liveRevocation: true, horizontalOverflow: false, remoteMutations: 0, externalEmails: 0 });
+      evidence.push({ viewport, realHandlers: true, isolatedSqlite: true, loginLogout: true, catalogAdoptionDisabled: true, confirmationMatchesRequest: true, editedForm: true, keyboardModal: true, cancellation: true, immutableTemplateVersion: true, previewNoEvent: true, messageStatusAndFailure: true, contentNotExposed: true, tenantSwitch: true, liveRevocation: true, horizontalOverflow: false, remoteMutations: 0, externalEmails: 0 });
     } finally { await context.close(); db.close(); }
   }
   await writeFile(".vercel/hub-ui/evidence.json", JSON.stringify(evidence, null, 2));
