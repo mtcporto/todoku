@@ -4,7 +4,7 @@
 
 ## Produtos e fronteiras
 
-- **Todoku (Communication Hub):** API central para eventos e comunicações transacionais de aplicações consumidoras, com templates, políticas, agendamento, filas, provedores e auditoria.
+- **Todoku (Communication Hub):** API central para eventos e comunicações transacionais de aplicações consumidoras, com templates, políticas, filas, provedores e auditoria; agendamento futuro solicitado pelo consumidor permanece planejado.
 - **Todoku Mail:** módulo de webmail em `/mail`, com caixas, composição, recebimento, envio controlado, usuários e administração. Não substitui o Hub.
 - **SSO independente (futuro):** projeto separado, ainda sem nome e sem implementação autorizada. Poderá autenticar produtos, mas não substitui os usuários, permissões ou dados de cada aplicação.
 
@@ -15,7 +15,8 @@
 | Contratos de eventos, API e ingestão durável | Implementados; Turso, idempotência, worker autenticado e auditoria | Manter regressões e documentação de contratos |
 | Templates versionados, políticas, BYOK, Resend e webhooks | Base implementada | Revisar lacunas por caso de uso antes de ampliar escopo |
 | Notifications / entrega externa | **Dry-run por padrão**; marketing desabilitado | Ativação por tenant/aplicação somente com aprovação e validação operacional explícita |
-| Agendamento, filas, tentativas e observabilidade | Base técnica existente | Auditar operação e lacunas com evidências; não presumir dashboard pronto |
+| Filas, cron e reagendamento de tentativas | **Implementados** como infraestrutura de processamento/retry | Auditar execução e observabilidade com evidências; não presumir dashboard pronto |
+| Agendamento futuro solicitado pela aplicação consumidora | **Planejado; não suportado pelo contrato atual de ingestão** | Definir campo/semântica da data futura, validação, políticas, persistência e testes antes de oferecer a capacidade |
 | Preferências de destinatário, anti-fatigue e opt-out | Evolução planejada | Definir contrato e persistência antes da UI |
 | Painel de administração do Hub | Planejado; **não confundir** com `/mail/admin` | Planejar métricas, tenants, templates, integrações e políticas do Hub |
 | Adaptadores adicionais (SMS, WhatsApp, push, outros provedores) | Ideias futuras | Avaliar necessidade real, custos e compliance por canal |
@@ -28,7 +29,7 @@ Referências: [API](API.md), [Delivery](DELIVERY.md), [Operations](OPERATIONS.md
 | Etapa | Situação em 06/11/2026 | Referência |
 | --- | --- | --- |
 | MVP 1 — caixa, leitura e Receiving | Implementado; piloto de Receiving já validado em produção | [Mail](MAIL.md) |
-| MVP 2 — composição, respostas, rascunhos, enviados, lixeira e envio controlado | Implementado; ativação externa sujeita aos controles atuais | [Outbound](MAIL-OUTBOUND.md), [política de envio](MAIL-SENDING-POLICY.md) |
+| MVP 2 — composição, respostas, rascunhos, enviados, lixeira e envio controlado | Implementado; Sending controlado de `contato` para destinatários externos conforme política vigente (20 mensagens/24h); não implica ativação de Notifications | [Outbound](MAIL-OUTBOUND.md), [política de envio](MAIL-SENDING-POLICY.md) |
 | MVP 3 / 1 — autorização, grants e migração 0007 | **Publicado** (#23) | [Autorização](MAIL-AUTHORIZATION.md) |
 | MVP 3 / 2 — APIs administrativas | **Publicado** (#24) | [API administrativa](MAIL-ADMIN-API.md) |
 | MVP 3 / 3 — usuários, convites, sessões e migração 0008 | **Publicado** (#25); onboarding real de segundo convidado ainda não validado | [Usuários](MAIL-USERS-INVITATIONS.md) |
