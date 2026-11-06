@@ -1,6 +1,6 @@
 # Todoku Mail — perfil, sessões e navegação (entrega 7)
 
-Issue #28, antecipada às entregas 5–6 pela decisão da PR #27. Base da implementação: main `76270a0`, após publicação da #26. PR própria para revisão, sem merge automático. Todoku continua sendo o Communication Hub; este trabalho pertence ao módulo Mail, não ao futuro SSO.
+Issue #28, antecipada às entregas 5–6 pela decisão da PR #27, já integrada à main em `6168ad0`. Base inicial da implementação: main `76270a0`, após publicação da #26; branch sincronizada com `6168ad0` para revisão da PR #29. A implementação permanece sem merge. Todoku continua sendo o Communication Hub; este trabalho pertence ao módulo Mail, não ao futuro SSO.
 
 ## Auditoria antes da implementação
 
@@ -37,6 +37,6 @@ Preservar quota20/24h, rate limits, DNS, Resend, credenciais, Sending, Receiving
 
 `npm run smoke:mail:profile` renderiza a UI local ou do Preview em desktop1440×960 e mobile390×844. Intercepta **todas** as APIs Mail, executando handlers reais contra fixtures locais isoladas. Cobre sessão senha com Google vinculado, método Google/legacy, catálogo/paginação pessoal, recusa de revogar terceiro, cancelamento/foco, duplo clique/auditoria, revogação atual, falha503/recuperação, falta de sessão/grants, navegação administrativa e contexto entre organizações. Nenhum request de escrita chega ao servidor remoto. Screenshots/evidências ignorados pelo Git em `.vercel/profile-ui/`.
 
-CI executa testes, typecheck, build e cinco suítes Playwright: compositor, OIDC, convites, painel e perfil. A PR #27 de planejamento permanece independente; este código parte da main publicada, sem integrá-la automaticamente.
+CI executa testes, typecheck, build e cinco suítes Playwright: compositor, OIDC, convites, painel e perfil. O planejamento da PR #27 já está na main e foi incorporado à branch da implementação; a PR #29 continua aberta para revisão. Entregas5–6 adiadas, quota20/24h preservada.
 
 Validação local:152 testes aprovados, typecheck/build aprovados e cinco suítes desktop/mobile aprovadas. Inspeção visual de Mail/perfil e login preservou a identidade visual; menu limitado à viewport e estados de conteúdo indisponível distintos de caixa vazia. CI e Preview automático do SHA da PR serão registrados nas issues #28/#20, sem teste de escrita remota.
