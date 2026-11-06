@@ -42,6 +42,21 @@
 
 **Consequências:** Preview com banco compartilhado é somente leitura para testes manuais; mutações de teste devem usar fixtures locais isoladas. Nenhuma alteração de infraestrutura ou política decorre apenas de documentação.
 
+## D-007 — Concluir o Hub com a infraestrutura existente (06/11/2026)
+
+**Decisão:** priorizar o MVP funcional do Communication Hub, reutilizando Resend,
+Cloudflare, Vercel e Turso. MinhaNota/boas-vindas é o único fluxo piloto. Não
+reconfigurar infraestrutura funcional nem reconstruir fila, worker ou BYOK.
+
+**Consequências:** catálogo de templates comuns desabilitados por padrão,
+versões específicas por aplicação e interface mínima em `/hub`. Autenticação
+reutiliza sessões existentes, mas administração depende de grant próprio do Hub
+por UUID/tenant, sem herdar papéis ou conteúdo do Mail. Novas aplicações começam
+dry-run; envio real exige autorização específica. SSO, marketing, agendamento
+avançado, painel sofisticado, outros provedores e onboarding universal ficam
+adiados. Ver [diagnóstico e plano](HUB-MVP.md). Implementação em revisão, sem
+autorização de merge ou migração remota derivada desta decisão.
+
 ## Histórico e referências
 
 - [Roadmap consolidado](ROADMAP.md)

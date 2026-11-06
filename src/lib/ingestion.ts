@@ -3,7 +3,8 @@ import { setTimeout } from "node:timers/promises";
 import type { Client, Transaction } from "@libsql/client";
 import type { CommunicationEvent } from "./events.ts";
 import { activeConfiguration } from "./configurations.ts";
-import { renderTemplate, TemplateError } from "./templates.ts";
+import { TemplateError } from "./templates.ts";
+import { resolveTemplate } from "./hub/templates.ts";
 
 export class IngestionError extends Error {
   readonly status: number;
@@ -75,7 +76,7 @@ export async function ingestEvent(db: Client, token: string, event: Communicatio
     if (duplicateId.rows.length) throw new IngestionError("event_id_conflict", 409);
     if (event.trafficType === "marketing") throw new IngestionError("marketing_disabled", 422);
     let rendered;
-    try { rendered = renderTemplate(event); } catch (error) {
+    try { rendered = await resolveTemplate(tx, event); } catch (error) {
       if (error instanceof TemplateError) throw new IngestionError(error.message, 422);
       throw error;
     }
