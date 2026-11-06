@@ -21,7 +21,7 @@
 | MVP funcional do Hub | Backend #31 e painel #32 publicados; 0009, bootstrap e acesso administrativo validados; `todoku/minhanota` configurada e **API → Hub validado em Production dry-run** | [Inicialização](HUB-INITIALIZATION.md) e [evidências do piloto](HUB-MINHANOTA-PILOT.md); callback Google permanece pendente |
 | Painel de administração do Hub | Interface mínima `/hub` publicada e validada por senha em desktop/celular; **não confundir** com `/mail/admin` | Configuração MinhaNota concluída; dashboard sofisticado adiado |
 | Adaptadores adicionais (SMS, WhatsApp, push, outros provedores) | Ideias futuras | Avaliar necessidade real, custos e compliance por canal |
-| Integrações com apps consumidoras | Boas-vindas do MinhaNota publicadas na #3 (`797886c`), opt-in Production ativo; HTTP API → Hub, replay, snapshot, cron dry-run, status e auditorias validados em 06/11; credencial temporária revogada | Validar separadamente login Google → MinhaNota → Hub, sem alterar históricos ou conceder acesso fiscal; nenhum envio real autorizado |
+| Integrações com apps consumidoras | Boas-vindas do MinhaNota publicadas na #3 (`797886c`), opt-in Production ativo; API → Hub validado em dry-run; conta do responsável preparada para callback, com remoção autorizada de somente uma supressão legada de teste | Titular concluir senha/2FA do login Google; verificar reserva/evento/processamento e segundo login sem duplicação. Envio real depende dessa prova e de confirmação específica; não habilitado |
 
 Referências: [API](API.md), [Delivery](DELIVERY.md), [Operations](OPERATIONS.md). O diagrama por etapas no README é histórico, não prova de conclusão.
 

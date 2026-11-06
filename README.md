@@ -26,6 +26,8 @@ dry-run, com `minhanota.welcome@1`. Em 06/11, o teste HTTP autenticado
 cron dry-run, status e auditoria. A credencial temporária autorizada foi
 revogada; o token do consumidor e seus históricos foram preservados.
 O callback Google → MinhaNota → Hub permanece **pendente**, separadamente.
+Para essa prova, a conta de teste do responsável foi preparada mediante
+autorização específica; o login real está aguardando senha/2FA do titular.
 [Inicialização](docs/HUB-INITIALIZATION.md) e
 [estado do piloto](docs/HUB-MINHANOTA-PILOT.md).
 Nenhum envio real foi autorizado por essa inicialização.

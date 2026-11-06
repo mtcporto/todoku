@@ -192,7 +192,7 @@ esperado da simulação, não erro nem confirmação de entrega externa.
 5. Somente após essas provas, registrar **API → Todoku Hub validado**.
    Manter **login Google → MinhaNota → Todoku Hub pendente**.
 
-### Alternativa segura para o callback Google
+### Alternativa anterior para o callback Google
 
 Usar outra conta Google **já existente e verificada**, disponível e com
 consentimento de sua titular, sem histórico/reserva de boas-vindas. Conferir
@@ -202,8 +202,8 @@ permite sessão sem empresas autorizadas: não criar contas fiscais, adicionar
 códigos OAuth ou callbacks. Sem participante elegível disponível, essa
 validação continua pendente.
 
-Contas com boas-vindas antigas permanecem suprimidas. Nenhuma reserva ou sucesso
-legado foi apagado para provocar novo evento. O código já aceita login de uma
+Até essa etapa, contas com boas-vindas antigas permaneciam suprimidas. Nenhuma reserva ou sucesso
+legado havia sido apagado para provocar novo evento. O código já aceita login de uma
 conta Google verificada sem acesso fiscal; a lista de contas da Pixel Vivo é
 uma permissão de conteúdo, não exigência para o piloto de comunicação. Não
 foram alterados autenticação, vínculos de empresas ou grants fiscais.
@@ -214,6 +214,86 @@ template/versionamento, tentativa dry-run, auditoria e replay do mesmo payload.
 Não substituir a prova do callback por chamada local do consumidor ou evento
 controlado diretamente no Hub. O teste direto pode comprovar somente API → Hub.
 O teste local de perda do recibo continua evidência separada.
+
+## Continuação: conta do responsável preparada para login Google
+
+Em 06/11/2026, às 18h47 (UTC−03), o responsável autorizou explicitamente
+usar apenas sua conta Google e remover/reinicializar somente as boas-vindas
+de desenvolvimento necessárias. Essa autorização substitui, para essa conta
+de teste, a orientação anterior de não tocar na supressão legada.
+
+Reconferidos os dois repositórios e deployments Production: mesmos commits
+`bfc7de7`/`797886c`, READY. O callback publicado chama o módulo Todoku;
+esse fluxo não contém envio direto/fallback Resend. Credencial Production
+ativa, variáveis corretas, `user.welcome` como único binding habilitado e
+`minhanota.welcome@1` presente. O valor Sensitive não foi extraído: seu uso
+efetivo pelo consumidor ainda depende da prova do callback.
+
+### Preparação executada
+
+- Antes: uma linha legada da conta autorizada, nenhuma reserva Hub da
+  conta e nenhum evento com sua chave determinística `minhanota-welcome-*`.
+- Em `2026-11-06T21:49:05.604Z`, removida **somente essa linha legada**,
+  filtrando e-mail exato e `criado_em` original, em transação. Não foi
+  necessário apagar/reinicializar reserva Hub.
+- Outras boas-vindas comparadas antes/depois e preservadas. Nenhum outro
+  usuário, empresa, documento ou tabela fiscal alterado. As regras de
+  idempotência e o evento API anterior permanecem intactos.
+- Relatório privado com estado anterior:
+  `.vercel/minhanota-pilot-20261106/google-test-reset-20261106.private.json`.
+- Conta permanece preparada; não restaurar a supressão antes do teste.
+
+### Login real: intervenção do titular necessária
+
+Aberto `https://minhanota.app`, acionado **Entrar com Google** e selecionada
+exclusivamente a conta autorizada. O Google exigiu senha; o responsável
+estava indisponível para completar senha/2FA. Não foram solicitados segredos
+por chat nem fabricados código OAuth, token ou sessão.
+
+Na conferência posterior: zero linhas legadas e zero reservas Hub da conta.
+Portanto **callback Google → MinhaNota → Todoku continua pendente**,
+assim como o teste de segundo login sem duplicação. A validação API → Hub
+anterior continua válida, mas não substitui essa etapa.
+
+Para retomar, o titular conclui login Google em `https://minhanota.app`.
+Conferir a reserva com payload original, `event_id`/`aceito_em`, payload e
+snapshot correspondentes no Hub, cron dry-run, status e auditorias. Repetir
+login legítimo sem limpar a reserva e exigir os mesmos IDs/payload e uma
+única outbox/tentativa. Não é preciso criar nova credencial ou refatorar código
+para essa prova: ela usa o token já instalado no consumidor.
+
+### Escopo de envio real avaliado, não ativado
+
+Os controles atuais permitem um teste sem nova implementação de envio:
+
+1. Somente `todoku/minhanota`, evento `user.welcome`, template
+   `minhanota.welcome@1`; manter os demais bindings desabilitados.
+2. Remetente `MinhaNota <notificacoes@minhanota.app>`, somente o destinatário
+   autorizado, allowlist exata e orçamento atômico de **uma mensagem**.
+   Assunto `Boas-vindas ao MinhaNota`; corpo do template já documentado,
+   com o nome confirmado antes da autorização.
+3. Configuração de transporte `test` restrita à aplicação. Verificar domínio
+   já cadastrado/validado e credenciais/webhook compatíveis antes de propor
+   qualquer alteração; não reutilizar por inferência a chave do Mail nem
+   criar DNS, domínio ou provedor. A configuração atual é dry-run e não tem
+   chave de envio/webhook; a prontidão desse transporte real não foi comprovada.
+4. O endpoint existente exige `TODOKU_TEST_SEND_ENABLED=true` em Production
+   e POST autenticado com `configurationId` explícito. Essa flag é global,
+   **não por evento**; o worker limita o claim à configuração indicada e
+   o cron GET continua exclusivamente dry-run. Foram encontradas **zero**
+   configurações reais de teste ativas. Revalidar isso na confirmação.
+5. Novo evento com chave exclusiva para teste real, sem converter snapshot
+   dry-run nem remover sua reserva para recriar a chave determinística do
+   consumidor. Se o evento real for submetido diretamente à API, registrar
+   essa origem separadamente do teste de callback.
+6. Após a confirmação específica e execução: conferir status/auditoria,
+   recibo/webhook/consulta ao provedor e recebimento na caixa do titular;
+   restaurar bloqueio global e configuração dry-run, preservando evidências.
+
+**Nada desse escopo foi ativado.** A confirmação do envio real será solicitada
+somente depois de completar o callback dry-run; autorização para preparar a
+conta não é autorização para enviar. Nenhum recurso adicional de envio foi
+criado nesta continuação.
 
 ## Backup, preservação e recuperação
 

@@ -92,6 +92,34 @@ login legítimo de outra conta Google verificada, com consentimento e elegibilid
 conferida, sem vínculos fiscais ou grants. Não fabricar callback, criar endpoint
 de envio ou liberar Resend para contornar o bloqueio.
 
+## D-009 — Repetição autorizada de boas-vindas da conta de teste (06/11/2026)
+
+**Decisão posterior à D-008:** o responsável autorizou usar exclusivamente sua
+conta Google e reinicializar apenas os registros de boas-vindas necessários ao
+teste. A regra geral de idempotência permanece inalterada; não criar contas,
+permissões ou dados fiscais para executar o piloto.
+
+**Executado:** removida uma única linha de `emails_boas_vindas`, por e-mail
+exato e instante original, em `2026-11-06T21:49:05.604Z`. Não havia reserva
+`emails_boas_vindas_hub` da conta nem evento com a chave determinística do
+consumidor no Hub. Demais boas-vindas preservadas; nenhuma tabela fiscal
+alterada. Estado anterior e resultado guardados em relatório privado.
+
+**Limite de evidência:** login Google real iniciado e parado na senha/2FA;
+titular indisponível para concluir. Zero reservas da conta na conferência
+posterior. Callback e duplicação por segundo login continuam pendentes.
+Não substituir essa prova por sessão fabricada ou chamada direta.
+
+**Envio real:** controles existentes permitem configuração de teste por
+aplicação, destinatário único e orçamento de uma mensagem, com worker manual
+por `configurationId`. Não há seletor de evento nesse endpoint; somente
+`user.welcome` está habilitado no catálogo. A flag global de teste é exigida
+pelo POST, mas não altera o cron dry-run. Nenhuma configuração real está
+ativa. Não habilitar flag, credencial de transporte ou envio antes de
+comprovar callback dry-run e obter confirmação do escopo exato. Um novo
+evento de teste real terá chave própria; não converter o snapshot dry-run
+nem apagar sua reserva para reutilizar a mesma chave determinística.
+
 ## Histórico e referências
 
 - [Roadmap consolidado](ROADMAP.md)

@@ -19,6 +19,10 @@ Validação posterior autorizada em 06/11: HTTP API → Hub comprovado em Produc
 com persistência, replay, snapshot, cron dry-run, status e auditorias.
 Credencial temporária revogada e rejeitada por HTTP 401; token do consumidor
 e históricos preservados. Callback Google → MinhaNota → Hub segue pendente.
+Na continuação autorizada às 18h47 de 06/11, somente uma boas-vindas legada
+de teste do responsável foi removida para permitir o login real; não havia
+reserva Hub dessa conta. Login iniciado, aguardando senha/2FA do titular.
+Nenhum envio real preparado ou habilitado. Ver D-009 e o relatório do piloto.
 [Inicialização e recuperação](HUB-INITIALIZATION.md) e
 [evidências do piloto](HUB-MINHANOTA-PILOT.md).
 
