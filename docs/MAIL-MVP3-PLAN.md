@@ -1,5 +1,7 @@
 # MVP 3 — plano administrativo, quotas e usabilidade
 
+> Estado consolidado em [ROADMAP.md](ROADMAP.md); decisões em [DECISIONS.md](DECISIONS.md). A seção histórica abaixo preserva propostas originais e não deve ser executada como se fosse o estado atual.
+
 ## Estado atual das entregas
 
 | Entrega | PR / commit integrado | Estado |
@@ -9,13 +11,13 @@
 | 3. [Usuários, convites e sessões / 0008](MAIL-USERS-INVITATIONS.md) | #25 / `1b6cd00` | Publicada; login Google do proprietário validado; onboarding real de convidado pendente |
 | 4. [Painel administrativo do módulo Mail](MAIL-ADMIN-PANEL.md) | #26 / `76270a0` | Publicada; painel administrativo em produção |
 | 5–6. Orçamentos, consumo e quotas | — | **Adiadas por decisão de produto**; executar após entrega 7; manter 20 mensagens/24h |
-| 7. [Perfil, login e navegação](MAIL-PROFILE-NAVIGATION.md) | #29 / `1c19c96` | **Implementada, em revisão, sem merge**; entregas 5–6 adiadas |
+| 7. [Perfil, login e navegação](MAIL-PROFILE-NAVIGATION.md) | #29 / `a5a7ae6` | **Publicada em produção**; validação funcional manual com sessão real recomendada |
 
 A #26 reutiliza integralmente as APIs e migrações publicadas. Oferece catálogos, grants, convites sem envio automático e suspensão/reativação de memberships. Edição de papéis e criação/ativação de domínios/caixas não integram esta PR. Escritas de teste usam fixtures locais isoladas, inclusive ao renderizar o Preview conectado ao banco operacional. Não repetir 0007/0008.
 
 ## Priorização vigente (05/11/2026)
 
-Por decisão de produto, **executar a entrega 7 antes das entregas 5 e 6**, mantendo a numeração original. A entrega 7 cobre perfil, método real de login da sessão, gestão de sessões pessoais, navegação Mail/Admin, contexto de organização/domínio/caixa e usabilidade. A implementação está em revisão na PR #29, com reutilização das APIs existentes e sem migrações. A revisão e os testes precedem qualquer merge.
+Por decisão de produto, **executar a entrega 7 antes das entregas 5 e 6**, mantendo a numeração original. A entrega 7 cobre perfil, método real de login da sessão, gestão de sessões pessoais, navegação Mail/Admin, contexto de organização/domínio/caixa e usabilidade. A implementação foi integrada na PR #29 e publicada automaticamente em produção, reutilizando APIs existentes e sem novas migrações. A validação manual com sessão real permanece recomendada.
 
 As entregas 5 (orçamento/reservas) e 6 (painel de consumo/quotas) permanecem pendentes, sem mudança de limites: **20 mensagens/24h**, sem ampliação de envio, DNS, Resend ou flags. Não presumir que a entrega 7 inclui cadastro/ativação de domínios/caixas ou edição de papéis, itens não entregues pela #26.
 
