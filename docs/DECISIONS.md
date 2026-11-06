@@ -150,7 +150,20 @@ continua dry-run. A flag de teste Production será liberada somente para
 essa operação e restaurada em publicação automática GitHub/Vercel posterior.
 Sem DNS, configuração fiscal ou mudança de runtime. Encerramento exige
 revogação de credenciais temporárias e restauração da configuração dry-run.
-Resultados serão registrados em [evidências](HUB-MINHANOTA-PILOT.md).
+**Resultado:** piloto concluído. Evento
+`0fbd5888-fde4-4741-b594-0bdf03b1f5c4`, mensagem Resend
+`01a1b2f1-a21e-7481-8ef5-23ffadff4fa1`, entregue na Caixa de entrada do Gmail
+às 19h19 (UTC−03). Uma tentativa, orçamento consumido uma vez, replay sem
+duplicação e segunda execução do worker sem trabalho. Webhooks assinados
+`email.sent` e `email.delivered` processados.
+
+Configuração original dry-run restaurada; configuração real revogada,
+webhook dedicado desativado e credenciais temporárias revogadas. A publicação
+de encerramento restaura `TODOKU_TEST_SEND_ENABLED=false` em Production.
+Chave Sending existente e token do consumidor preservados. O callback Google
+foi provado separadamente em dry-run; a mensagem real veio de novo evento
+identificado da API, sem apagar reservas nem converter snapshots anteriores.
+Ver [evidências](HUB-MINHANOTA-PILOT.md).
 
 ## Histórico e referências
 

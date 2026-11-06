@@ -24,9 +24,15 @@ de teste do responsável foi removida para permitir o login real; não havia
 reserva Hub dessa conta. Posteriormente, login Google real e segundo login
 foram concluídos: reserva/recibo e evento
 `1e276d31-326b-4e50-886d-2c9c452a46e2` correlacionados ao Hub, template e
-cron dry-run conferidos, sem duplicação. Escopo de envio real apresentado,
-sem confirmação adicional; transporte Resend ainda não validado e nenhum
-envio habilitado. Ver D-009 e o relatório do piloto.
+cron dry-run conferidos, sem duplicação. Na operação posteriormente autorizada
+às 19h11, novo evento pela API foi processado pelo worker e entregue pelo Resend
+na Caixa de entrada do Gmail às 19h19. Uma tentativa; replay e segunda execução
+do worker não duplicaram a entrega. Configuração dry-run restaurada, configuração
+real revogada, webhook dedicado desativado e credenciais temporárias revogadas.
+A publicação de encerramento restaura `TODOKU_TEST_SEND_ENABLED=false`;
+o cron continua dry-run e marketing permanece desabilitado. Nenhum envio
+direto pela API do Resend, mudança de DNS ou configuração fiscal.
+Ver D-009, D-010 e o relatório do piloto.
 [Inicialização e recuperação](HUB-INITIALIZATION.md) e
 [evidências do piloto](HUB-MINHANOTA-PILOT.md).
 
