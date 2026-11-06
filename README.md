@@ -71,6 +71,8 @@ flowchart TD
 4. **Etapa 4:** Motor de templates versionados, ingestão de webhooks, deduplicação e trilha de auditoria.
 
 **Trilha Mail:** Receiving do piloto validado em produção. MVP 2 adiciona composição, respostas, rascunhos e lixeira; envio externo segue bloqueado até autorização específica. Detalhes em [docs/MAIL.md](docs/MAIL.md) e [plano de Sending](docs/MAIL-OUTBOUND.md).
+
+**MVP 3:** autorização, APIs administrativas, convites/sessões e painel (#23–#26) publicados. A [entrega7 — perfil e navegação](docs/MAIL-PROFILE-NAVIGATION.md), issue #28, está em implementação/revisão antes das quotas agregadas (5–6); manter20 mensagens/24h. Estados antigos do piloto acima são históricos; consulte a documentação específica do Mail.
 5. **Etapa 5:** Painel administrativo para acompanhamento operacional, métricas de envio e configuração de tenants.
 
 ---

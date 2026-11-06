@@ -32,3 +32,4 @@ jobs:
           npm run smoke:mail:oidc
           npm run smoke:mail:invitations
           npm run smoke:mail:admin
+          npm run smoke:mail:profile

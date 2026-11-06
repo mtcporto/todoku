@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import MailComposer, { mailError, type ComposerPreset } from "./mail-composer";
+import AccountMenu, { methodLabel, type SessionMetadata } from "./account-menu";
 
 const folders = {
   inbox: "Recebidos",
@@ -22,12 +23,15 @@ const statuses: Record<string, string> = {
 
 type Identity = {
   id: string;
+  tenant_id: string;
   address: string;
   label: string;
   domain_id: string;
   domain: string;
+  domain_status: string;
   receiving_status: string;
   status: string;
+  can_read: number;
   can_send: number;
   can_manage: number;
   sending_configured: number;
@@ -103,6 +107,8 @@ export default function MailApp() {
   const [user, setUser] = useState<{ username: string } | null>(null),
     [checking, setChecking] = useState(true);
   const [canAdminister, setCanAdminister] = useState(false);
+  const [sessionMetadata, setSessionMetadata] =
+    useState<SessionMetadata | null>(null);
   const [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [signing, setSigning] = useState(false),
@@ -116,7 +122,8 @@ export default function MailApp() {
   const [inbox, setInbox] = useState<Inbox>(emptyInbox),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
-  const [domain, setDomain] = useState(""),
+  const [tenant, setTenant] = useState(""),
+    [domain, setDomain] = useState(""),
     [identity, setIdentity] = useState(""),
     [cursor, setCursor] = useState<string | null>(null),
     [refresh, setRefresh] = useState(0);
@@ -146,6 +153,11 @@ export default function MailApp() {
       url.searchParams.delete("authError");
       window.history.replaceState(null, "", url);
     }
+    if (url.searchParams.get("sessionExpired") === "1") {
+      setLoginError("Sua sessão expirou ou foi revogada. Entre novamente.");
+      url.searchParams.delete("sessionExpired");
+      window.history.replaceState(null, "", url);
+    }
   }, []);
   useEffect(() => {
     const controller = new AbortController();
@@ -169,6 +181,12 @@ export default function MailApp() {
     return () => controller.abort();
   }, [user?.username]);
   function signedOut() {
+    setSessionMetadata(null);
+    setGoogleAccess((current) => ({
+      ...current,
+      canLink: false,
+      linked: false,
+    }));
     setCanAdminister(false);
     setSendNotice("");
     setUser(null);
@@ -177,14 +195,25 @@ export default function MailApp() {
     setDetail(null);
     setComposer(null);
     setPassword("");
+    setTenant("");
+    setDomain("");
+    setIdentity("");
+    setCursor(null);
+    setReaderIdentity("");
+    setError("");
+    setDetailError("");
+    setLoginError("Sua sessão foi encerrada. Entre novamente para continuar.");
   }
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/mail/session", { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
+        if (controller.signal.aborted) return;
         if (response.ok) {
           const data = await response.json();
+          if (controller.signal.aborted) return;
           setUser(data.user);
+          setSessionMetadata(data.session ?? null);
           setCanAdminister(data.administration?.canAdminister === true);
         }
       })
@@ -201,6 +230,7 @@ export default function MailApp() {
     setError("");
     const query = new URLSearchParams();
     query.set("folder", folder);
+    if (tenant) query.set("tenant", tenant);
     if (domain) query.set("domain", domain);
     if (identity) query.set("identity", identity);
     if (cursor) query.set("cursor", cursor);
@@ -209,11 +239,17 @@ export default function MailApp() {
       cache: "no-store",
     })
       .then(async (response) => {
+        if (controller.signal.aborted) return;
         if (response.status === 401) {
           signedOut();
           return;
         }
-        if (!response.ok) throw new Error();
+        if (!response.ok)
+          throw new Error(
+            response.status === 403
+              ? "Você não tem permissão para acessar esta caixa."
+              : "Não foi possível carregar a caixa. Tente atualizar.",
+          );
         const data: Inbox = await response.json();
         if (!controller.signal.aborted)
           setInbox((previous) => ({
@@ -223,15 +259,24 @@ export default function MailApp() {
               : data.messages,
           }));
       })
-      .catch(() => {
-        if (!controller.signal.aborted)
-          setError("Não foi possível carregar a caixa. Tente atualizar.");
+      .catch((e) => {
+        if (!controller.signal.aborted) {
+          setInbox(emptyInbox);
+          setSelected(null);
+          setDetail(null);
+          setError(
+            e instanceof Error &&
+              e.message === "Você não tem permissão para acessar esta caixa."
+              ? e.message
+              : "Não foi possível carregar a caixa. Tente atualizar.",
+          );
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [user, domain, identity, cursor, refresh, folder]);
+  }, [user, tenant, domain, identity, cursor, refresh, folder]);
   useEffect(() => {
     if (!selected || !user) {
       setDetail(null);
@@ -249,6 +294,7 @@ export default function MailApp() {
       cache: "no-store",
     })
       .then(async (response) => {
+        if (controller.signal.aborted) return;
         if (response.status === 401) {
           signedOut();
           return;
@@ -320,11 +366,14 @@ export default function MailApp() {
       const session = await fetch("/api/mail/session", { cache: "no-store" });
       if (!session.ok) throw new Error();
       setPassword("");
+      setLoginError("");
+      setTenant("");
       setDomain("");
       setIdentity("");
       setCursor(null);
       const data = await session.json();
       setUser(data.user);
+      setSessionMetadata(data.session ?? null);
       setCanAdminister(data.administration?.canAdminister === true);
     } catch {
       setLoginError("Não foi possível entrar. Tente novamente.");
@@ -333,15 +382,26 @@ export default function MailApp() {
     }
   }
   async function logout() {
-    const response = await fetch("/api/mail/logout", { method: "POST" });
-    if (response.ok) signedOut();
-    else setError("Não foi possível encerrar a sessão. Tente novamente.");
+    try {
+      const response = await fetch("/api/mail/logout", { method: "POST" });
+      if (response.ok || response.status === 401) signedOut();
+      else setError("Não foi possível encerrar a sessão. Tente novamente.");
+    } catch {
+      setError("Não foi possível encerrar a sessão. Verifique sua conexão.");
+    }
   }
-  function filter(nextDomain: string, nextIdentity: string) {
+  function filter(
+    nextDomain: string,
+    nextIdentity: string,
+    nextTenant = tenant,
+  ) {
+    setTenant(nextTenant);
     setDomain(nextDomain);
     setIdentity(nextIdentity);
     setCursor(null);
     setSelected(null);
+    setDetail(null);
+    setReaderIdentity("");
     setInbox((previous) => ({ ...previous, messages: [] }));
     setRefresh((value) => value + 1);
   }
@@ -357,14 +417,19 @@ export default function MailApp() {
   }
   function composeNew() {
     setSendNotice("");
-    const sender =
-      inbox.identities.find(
-        (item) =>
-          item.id === identity && item.can_send && item.status === "active",
-      ) ??
-      inbox.identities.find(
-        (item) => item.can_send && item.status === "active",
-      );
+    const available = inbox.identities.filter(
+      (item) =>
+        (!tenant || item.tenant_id === tenant) &&
+        (!domain || item.domain_id === domain),
+    );
+    const sender = available.find(
+      (item) =>
+        (!identity || item.id === identity) &&
+        item.can_send &&
+        item.status === "active" &&
+        item.receiving_status === "active" &&
+        (!item.domain_status || item.domain_status === "active"),
+    );
     setComposer({
       identityId: sender?.id ?? "",
       to: [],
@@ -463,6 +528,11 @@ export default function MailApp() {
           </div>
         </div>
         <div className="login-form-wrap">
+          <div className="login-heading">
+            <span className="eyebrow">BEM-VINDO DE VOLTA</span>
+            <h2>Entre no Todoku Mail</h2>
+            <p>Seu acesso é pessoal. Escolha como entrar.</p>
+          </div>
           {googleAccess.enabled ? (
             <form
               action="/api/mail/oidc/google/start"
@@ -472,13 +542,10 @@ export default function MailApp() {
               <button className="secondary-button" type="submit">
                 Entrar com Google
               </button>
-              <p>Ou use seu acesso atual abaixo.</p>
+              <p>ou entre com usuário e senha</p>
             </form>
           ) : null}
           <form onSubmit={login} className="login-form">
-            <span className="eyebrow">BEM-VINDO DE VOLTA</span>
-            <h2>Entre na sua caixa</h2>
-            <p>Use seu acesso ao Todoku Mail.</p>
             <label htmlFor="mail-user">Usuário</label>
             <input
               id="mail-user"
@@ -520,9 +587,26 @@ export default function MailApp() {
     );
   const domains = [
     ...new Map(
-      inbox.identities.map((item) => [item.domain_id, item.domain]),
+      inbox.identities
+        .filter((item) => !tenant || item.tenant_id === tenant)
+        .map((item) => [item.domain_id, item.domain]),
     ).entries(),
   ];
+  const organizations = [
+    ...new Set(inbox.identities.map((item) => item.tenant_id).filter(Boolean)),
+  ];
+  const currentBox = inbox.identities.find((item) => item.id === identity);
+  const contextNotice =
+    identity && !currentBox
+      ? "A caixa selecionada não está mais disponível para seu acesso. Selecione outra caixa ou atualize."
+      : currentBox &&
+          (currentBox.status !== "active" ||
+            currentBox.domain_status === "disabled" ||
+            currentBox.receiving_status !== "active")
+        ? "Esta caixa ou seu domínio está desativado. O acesso ao conteúdo está bloqueado."
+        : currentBox?.can_read === 0 && folder === "inbox"
+          ? "Você não tem permissão para ler as mensagens desta caixa. A permissão de envio, quando concedida, permite apenas seus próprios rascunhos e envios."
+          : "";
   return (
     <main className="mail-shell">
       <aside className="mail-sidebar" inert={Boolean(composer)}>
@@ -534,8 +618,8 @@ export default function MailApp() {
           <span className="eyebrow">SEU ESPAÇO</span>
           <button
             className="nav-inbox"
-            onClick={() => filter("", "")}
-            aria-current={!domain && !identity ? "page" : undefined}
+            onClick={() => filter("", "", "")}
+            aria-current={!tenant && !domain && !identity ? "page" : undefined}
           >
             <span aria-hidden="true">▤</span> Caixa unificada{" "}
             <span className="nav-count">
@@ -543,27 +627,32 @@ export default function MailApp() {
             </span>
           </button>
         </div>
-        <nav className="sidebar-identities" aria-label="Identidades">
-          <span className="eyebrow">IDENTIDADES</span>
+        <nav className="sidebar-identities" aria-label="Caixas postais">
+          <span className="eyebrow">CAIXAS POSTAIS</span>
           {inbox.identities.map((item) => (
             <button
               key={item.id}
               className={
                 identity === item.id ? "identity-link active" : "identity-link"
               }
-              onClick={() => filter(item.domain_id, item.id)}
+              onClick={() =>
+                filter(item.domain_id, item.id, item.tenant_id ?? "")
+              }
               title={item.address}
             >
               <span className="identity-dot" aria-hidden="true" />
               <span>
                 {item.label}
-                <small>{item.address}</small>
+                <small>
+                  {item.address}
+                  {item.status !== "active" ? " · desativada" : ""}
+                </small>
               </span>
             </button>
           ))}
           {inbox.identities.length === 0 ? (
             <p className="muted-note">
-              Nenhuma identidade vinculada a este acesso.
+              Nenhuma caixa disponível para este acesso.
             </p>
           ) : null}
         </nav>
@@ -573,7 +662,7 @@ export default function MailApp() {
           </span>
           <span>
             {user.username}
-            <small>Sessão pessoal</small>
+            <small>{methodLabel(sessionMetadata?.method)}</small>
           </span>
           <button
             onClick={logout}
@@ -599,9 +688,19 @@ export default function MailApp() {
                     ?.label ?? "Sua caixa")
                 : "Caixa unificada"}
             </h1>
-            <p>Suas conversas, no mesmo lugar.</p>
+            <p className="mail-context" aria-live="polite">
+              Organização: {tenant || "Todas"} · Domínio:{" "}
+              {domains.find(([id]) => id === domain)?.[1] || "Todos"} · Caixa:{" "}
+              {currentBox?.address || (identity ? "Indisponível" : "Todas")}
+            </p>
           </div>
           <div className="toolbar-actions">
+            <AccountMenu
+              username={user.username}
+              method={sessionMetadata?.method}
+              canAdminister={canAdminister}
+              onLogout={logout}
+            />
             {canAdminister ? (
               <a className="secondary-button" href="/mail/admin">
                 Administração do Mail
@@ -668,11 +767,34 @@ export default function MailApp() {
         </nav>
         <div className="mail-filters">
           <div>
+            <label htmlFor="organization-filter">Organização</label>
+            <select
+              id="organization-filter"
+              value={tenant}
+              onChange={(event) => filter("", "", event.target.value)}
+            >
+              <option value="">Todas as organizações</option>
+              {organizations.map((id) => (
+                <option value={id} key={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label htmlFor="domain-filter">Domínio</label>
             <select
               id="domain-filter"
               value={domain}
-              onChange={(event) => filter(event.target.value, "")}
+              onChange={(event) =>
+                filter(
+                  event.target.value,
+                  "",
+                  inbox.identities.find(
+                    (item) => item.domain_id === event.target.value,
+                  )?.tenant_id ?? tenant,
+                )
+              }
             >
               <option value="">Todos os domínios</option>
               {domains.map(([id, name]) => (
@@ -683,7 +805,7 @@ export default function MailApp() {
             </select>
           </div>
           <div>
-            <label htmlFor="identity-filter">Identidade</label>
+            <label htmlFor="identity-filter">Caixa postal</label>
             <select
               id="identity-filter"
               value={identity}
@@ -691,15 +813,24 @@ export default function MailApp() {
                 const item = inbox.identities.find(
                   (item) => item.id === event.target.value,
                 );
-                filter(item?.domain_id ?? domain, event.target.value);
+                filter(
+                  item?.domain_id ?? domain,
+                  event.target.value,
+                  item?.tenant_id ?? tenant,
+                );
               }}
             >
-              <option value="">Todas as identidades</option>
+              <option value="">Todas as caixas</option>
               {inbox.identities
-                .filter((item) => !domain || item.domain_id === domain)
+                .filter(
+                  (item) =>
+                    (!tenant || item.tenant_id === tenant) &&
+                    (!domain || item.domain_id === domain),
+                )
                 .map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.address}
+                    {item.status !== "active" ? " · desativada" : ""}
                   </option>
                 ))}
             </select>
@@ -709,6 +840,11 @@ export default function MailApp() {
             {inbox.messages.length === 1 ? "mensagem" : "mensagens"}
           </span>
         </div>
+        {contextNotice ? (
+          <p className="mail-context-notice" role="status">
+            {contextNotice}
+          </p>
+        ) : null}
         {sendNotice ? (
           <p className="composer-notice mail-send-notice" role="status">
             {sendNotice}
@@ -738,13 +874,19 @@ export default function MailApp() {
                 <span className="empty-symbol" aria-hidden="true">
                   ✉
                 </span>
-                <h2>Tudo em dia por aqui</h2>
+                <h2>
+                  {contextNotice
+                    ? "Conteúdo indisponível"
+                    : "Tudo em dia por aqui"}
+                </h2>
                 <p>
-                  {folder !== "inbox"
-                    ? `Nenhuma mensagem em ${folders[folder].toLowerCase()}.`
-                    : inbox.receivingEnabled
-                      ? "As mensagens recebidas aparecerão nesta caixa."
-                      : "As mensagens aparecerão aqui quando o recebimento do domínio for ativado."}
+                  {contextNotice
+                    ? "Selecione outra caixa ou consulte suas permissões com o administrador."
+                    : folder !== "inbox"
+                      ? `Nenhuma mensagem em ${folders[folder].toLowerCase()}.`
+                      : inbox.receivingEnabled
+                        ? "As mensagens recebidas aparecerão nesta caixa."
+                        : "As mensagens aparecerão aqui quando o recebimento do domínio for ativado."}
                 </p>
               </div>
             ) : (

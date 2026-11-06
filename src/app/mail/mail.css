@@ -135,6 +135,149 @@
   letter-spacing: -0.8px;
   margin: 16px 0 0;
 }
+.login-heading {
+  width: 100%;
+  max-width: 350px;
+  margin-bottom: 24px;
+}
+.login-heading h2 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 35px;
+  letter-spacing: -0.8px;
+  margin: 16px 0 12px;
+}
+.login-heading p {
+  color: #637462;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.profile-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.profile-navigation a {
+  text-decoration: none;
+}
+.account-menu {
+  position: relative;
+  min-width: 0;
+  font-size: 12px;
+}
+.account-menu summary {
+  cursor: pointer;
+  padding: 9px 12px;
+  border: 1px solid #cdd9c5;
+  border-radius: 7px;
+  background: #f3f7ee;
+  color: #34503a;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu summary span {
+  margin-left: 5px;
+}
+.account-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 12;
+  width: min(300px, calc(100vw - 40px));
+  box-sizing: border-box;
+  padding: 18px;
+  background: #fbfcf9;
+  color: #304936;
+  border: 1px solid #cdd9c5;
+  border-radius: 10px;
+  box-shadow: 0 12px 35px #20342026;
+  overflow-wrap: anywhere;
+}
+.account-popover small {
+  display: block;
+  margin-top: 6px;
+  color: #5f705a;
+}
+.account-popover nav {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+.account-popover :is(a, button) {
+  text-align: left;
+  font: inherit;
+  color: #34503a;
+  text-decoration: none;
+  padding: 12px 8px;
+  min-height: 44px;
+  box-sizing: border-box;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #e1e8da;
+  cursor: pointer;
+}
+.account-menu :is(a, button, summary):focus-visible,
+.profile-shell :is(a, button):focus-visible,
+.mail-filters select:focus-visible {
+  outline: 3px solid #466d47;
+  outline-offset: 3px;
+}
+.profile-shell {
+  max-width: 1100px;
+  margin: auto;
+}
+.profile-card {
+  margin-top: 24px;
+}
+.profile-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.profile-facts dt {
+  color: #667761;
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+.profile-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.profile-sessions {
+  list-style: none;
+  padding: 0;
+}
+.profile-sessions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid #dce3d6;
+  padding: 20px 0;
+}
+.profile-sessions p {
+  font-size: 12px;
+  color: #5f705a;
+  line-height: 1.7;
+}
+.profile-sessions small {
+  color: #5f705a;
+}
+.profile-sessions button {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.mail-context-notice {
+  margin: 0;
+  padding: 12px 24px;
+  background: #f7f0df;
+  color: #624b29;
+  line-height: 1.6;
+  font-size: 12px;
+}
 .login-form > p {
   color: #7b877d;
   font-size: 14px;
@@ -328,6 +471,14 @@
   gap: 15px;
   border-bottom: 1px solid #e5eadf;
 }
+.mail-toolbar > div:first-child {
+  min-width: 0;
+}
+.mail-toolbar .mail-context {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  max-width: 400px;
+}
 .mail-toolbar h1 {
   font-family: Georgia, serif;
   font-size: 30px;
@@ -344,6 +495,9 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 62%;
 }
 .pilot-badge {
   border: 1px solid #d8e3cd;
@@ -370,6 +524,7 @@
 }
 .mail-filters {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 24px;
   padding: 18px 30px;
@@ -1183,6 +1338,17 @@ button:disabled {
   background: #eaf0e2;
 }
 @media (max-width: 650px) {
+  .account-menu summary span {
+    display: none;
+  }
+  .profile-facts {
+    grid-template-columns: 1fr;
+  }
+  .profile-sessions li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
   .mail-folders {
     padding: 6px 8px;
     gap: 0;
@@ -1265,6 +1431,8 @@ button:disabled {
   .mail-toolbar {
     min-height: 105px;
     padding: 20px 18px;
+    flex-direction: column;
+    align-items: stretch;
   }
   .mail-toolbar h1 {
     font-size: 26px;
@@ -1276,17 +1444,17 @@ button:disabled {
     font-size: 10px;
   }
   .toolbar-actions {
-    gap: 3px;
+    gap: 6px;
     flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: 145px;
+    justify-content: flex-start;
+    max-width: 100%;
   }
   .pilot-badge {
     font-size: 7px;
     padding: 5px 7px;
-    width: 100%;
+    width: auto;
     text-align: center;
-    margin-bottom: 5px;
+    margin-bottom: 0;
   }
   .toolbar-actions .secondary-button {
     padding: 5px 9px;

@@ -78,7 +78,8 @@ export async function mailRequest(
       segments.length === 1 &&
       request.method === "GET"
     ) {
-      const domain = url.searchParams.get("domain");
+      const domain = url.searchParams.get("domain"),
+        tenant = url.searchParams.get("tenant");
       const folder = mailboxFolder.parse(
         url.searchParams.get("folder") ?? "inbox",
       );
@@ -101,12 +102,14 @@ export async function mailRequest(
       if (
         (identity?.length ?? 0) > 100 ||
         (domain?.length ?? 0) > 100 ||
+        (tenant?.length ?? 0) > 100 ||
+        url.searchParams.getAll("tenant").length > 1 ||
         (cursor?.length ?? 0) > 400
       )
         throw new MailError("invalid_filter");
       const identities = (
         await db.execute({
-          sql: `SELECT i.id,i.address,i.label,i.status,d.id AS domain_id,d.name AS domain,s.provider,s.status AS receiving_status,g.can_read,g.can_send,g.can_manage,
+          sql: `SELECT i.id,i.tenant_id,i.address,i.label,i.status,d.id AS domain_id,d.name AS domain,d.status AS domain_status,s.provider,s.status AS receiving_status,g.can_read,g.can_send,g.can_manage,
         CASE WHEN c.status='enabled' AND c.encrypted_api_key IS NOT NULL AND i.status='active' AND d.status='active' AND s.status='active' THEN 1 ELSE 0 END AS sending_configured
         FROM mail_identity_grants g JOIN mail_identities i ON i.tenant_id=g.tenant_id AND i.id=g.identity_id
         JOIN mail_domains d ON d.tenant_id=i.tenant_id AND d.id=i.domain_id JOIN mail_sources s ON s.tenant_id=d.tenant_id AND s.id=d.source_id
@@ -120,7 +123,7 @@ export async function mailRequest(
           sql: `SELECT m.id,m.sender,m.subject,m.preview,m.received_at,m.direction,m.delivery_status,MIN(r.identity_id) AS identity_id,MIN(r.is_read) AS is_read,
         COUNT(DISTINCT a.id) AS attachment_count,GROUP_CONCAT(DISTINCT i.address) AS identities
         ${joins} LEFT JOIN mail_attachments a ON a.tenant_id=m.tenant_id AND a.message_id=m.id
-        WHERE g.user_id=? AND ${visible} AND (? IS NULL OR i.id=?) AND (? IS NULL OR d.id=?)
+        WHERE g.user_id=? AND ${visible} AND (? IS NULL OR i.id=?) AND (? IS NULL OR d.id=?) AND (? IS NULL OR m.tenant_id=?)
         AND r.folder=? AND (? IS NULL OR m.received_at<? OR (m.received_at=? AND m.id<?)) GROUP BY m.tenant_id,m.id ORDER BY m.received_at DESC,m.id DESC LIMIT 31`,
           args: [
             user.id,
@@ -128,6 +131,8 @@ export async function mailRequest(
             identity,
             domain,
             domain,
+            tenant,
+            tenant,
             folder,
             before,
             before,
