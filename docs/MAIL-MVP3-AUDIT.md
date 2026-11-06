@@ -1,6 +1,14 @@
 # MVP 3: auditoria de autenticação e administração
 
-> As entregas 1 e 2 foram publicadas pelas PRs #23/#24, em `85c17e7` e `37e20d4`: [autorização](MAIL-AUTHORIZATION.md) e [APIs administrativas](MAIL-ADMIN-API.md). A entrega 3 acrescenta [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md), com migração aditiva `0008`, para revisão em PR. O diagnóstico abaixo é histórico; painel e quotas agregadas continuam pendentes.
+## Estado atual
+
+As entregas #23 (`85c17e7`), #24 (`37e20d4`) e #25 (`1b6cd00`) estão publicadas: [autorização / 0007](MAIL-AUTHORIZATION.md), [APIs administrativas](MAIL-ADMIN-API.md) e [usuários, convites e sessões / 0008](MAIL-USERS-INVITATIONS.md). Login Google do proprietário validado em produção; onboarding real com segunda conta permanece pendente.
+
+A #26, [painel do módulo Mail](MAIL-ADMIN-PANEL.md), está **em revisão, sem merge ou publicação em produção**. A auditoria de cobertura confirmou as APIs existentes, sem complemento de backend ou migração. Quotas agregadas e UX de perfil/sessões continuam pendentes. [Situação das sete entregas](MAIL-MVP3-PLAN.md#estado-atual-das-entregas).
+
+## Histórico — diagnóstico anterior às PRs #23/#24/#25
+
+O inventário, as lacunas e os snapshots abaixo correspondem à base `1fec48a`, antes das entregas já publicadas. São evidências históricas, não uma nova consulta ao banco/provedor ou descrição da main atual.
 
 Revisão de 05/11/2026 da [issue #20](https://github.com/mtcporto/todoku/issues/20), após as PRs #21 e #22. OIDC e política de envio estão entregues; administração multiusuário/multidomínio, quotas agregadas e usabilidade ainda precisam de entregas incrementais. O [plano de PRs](MAIL-MVP3-PLAN.md) descreve a proposta, sem implementação ou ampliação de permissões nesta auditoria.
 

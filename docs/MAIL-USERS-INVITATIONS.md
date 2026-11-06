@@ -1,6 +1,8 @@
 # Mail — usuários, convites e sessões (MVP 3, entrega 3)
 
-Base: `main` em `37e20d4`, após PRs #23/#24. Esta entrega acrescenta a migração `0008_mail_users_invitations_sessions`, reutilizando memberships, papéis, grants e guards da `0007`. A PR permanece para revisão, sem merge. Não há cadastro público, envio automático de convites ou novos grants por autenticação.
+Publicada pela PR #25 em `1b6cd00`, a partir da base histórica `37e20d4` (PRs #23/#24). Esta entrega acrescentou a migração `0008_mail_users_invitations_sessions`, reutilizando memberships, papéis, grants e guards da `0007`. Não há cadastro público, envio automático de convites ou novos grants por autenticação. O [painel #26](MAIL-ADMIN-PANEL.md) permanece em revisão, sem merge/produção.
+
+Após a publicação, o proprietário validou manualmente o login Google sem novo consentimento inesperado; a auditoria confirmou `auth_method=google` para o mesmo UUID. **Onboarding real com uma segunda conta continua pendente**, sem criação automática de convite ou alteração da audiência OAuth.
 
 ## Identidade e onboarding
 
@@ -17,7 +19,7 @@ O UUID de `mail_users` continua sendo a identidade principal. O login Google nor
 - Aceitar cria apenas membership ativa, quando inexistente. **Não cria papéis administrativos, grants de leitura/envio/gerenciamento ou caixas.** Um membro sem grants entra autenticado e vê uma inbox sem caixas acessíveis.
 - Consumo, vínculo, criação eventual de usuário/membership, auditoria e sessão são atômicos. Corrida entre dois callbacks produz uma única aceitação. Falha de auditoria desfaz o onboarding.
 
-Para o proprietário configurado, mantém-se adicionalmente o gate do endereço Google verificado original. Para outras pessoas, convites e bindings explícitos substituem a restrição global ao proprietário. O estado External/Testing e os usuários de teste do cliente Google continuam sendo uma restrição independente do provedor; **não foram alterados**. Um convidado fora da audiência permitida no Google não conseguirá consentir até ajuste autorizado no Console.
+Para o proprietário configurado, mantém-se adicionalmente o gate do endereço Google verificado original. Para outras pessoas, convites e bindings explícitos substituem a restrição global ao proprietário. A audiência OAuth é uma restrição independente do provedor. Na publicação da #25, o responsável confirmou no Console: projeto `umbrella-mtcporto` (nome umbrella), **External / In production**, 1 de 100 usuários OAuth e verificação do aplicativo pendente. Não está em Testing nem depende de lista de test users. Nenhuma configuração Google foi alterada; a audiência do provedor não concede acesso ao Todoku sem binding/onboarding autorizado.
 
 ## APIs de convites
 
@@ -47,15 +49,15 @@ Sessões expiradas/revogadas continuam sujeitas à retenção já existente. Aud
 
 Administrador organizacional suspende/reativa **membership**, pelas APIs da PR #24, sem revogar a sessão global nem bloquear outras organizações. Os guards aplicam a suspensão também nas APIs de conteúdo e administração. A proteção do último administrador permanece ativa. Desativação global de `mail_users` continua sendo operação de operador confiável, sem endpoint irrestrito para administrador de tenant. Não se introduz capacidade administrativa global nesta PR.
 
-## Migração, rollout e recuperação
+## Migração já aplicada e recuperação
 
 `0008` acrescenta IDs/método de sessão, detalhes JSON à auditoria de autenticação e tabela/índices de convites. Preserva todos os campos antigos. Um trigger atribui ID às sessões inseridas pelo servidor anterior, que desconhece as colunas novas. Não altera `0007`, grants, roles, senhas, credenciais BYOK, mensagens ou anexos.
 
-**Aplicar 0008 antes de executar o novo servidor**, inclusive Preview. Antes: exportar backup privado do banco único `todoku`, checkpoint, SHA-256 e integridade/FKs; migrar somente uma cópia de validação, comparar todas as colunas existentes e testar idempotência. Depois aplicar uma vez ao remoto e repetir comparação/integridade. Não rodar migração durante build/request.
+**Histórico do procedimento da #25:** 0008 precedeu o novo servidor, inclusive Preview. Antes, foi exportado backup privado do banco único `todoku`, com checkpoint, SHA-256 e integridade/FKs; a migração foi validada numa cópia local, comparando as colunas existentes e a idempotência. Depois, foi aplicada uma vez ao remoto e repetida a comparação/integridade. **Já concluído: não repetir 0008**, nem rodar migração durante build/request ou na revisão da #26.
 
 Evidência desta execução: backup privado `todoku-before-users-20261105-pr3.db`, SHA-256 `7fd72257b390028372995ff86943f69bd9065cb5dc1a57ba9ac9267c9af9c3d2`. A cópia migrada e o remoto preservaram os dados das 36 tabelas anteriores, com integridade `ok` e zero violações de FK. Aplicação remota única às `2026-11-05T21:59:20.206Z`, checksum `b602321257e34e51e04d4c6cc0c2fb16e4344f3390c9f397220c99b190e1bd9e`. Zero usuários, convites ou grants criados. A publicação automática do Preview e as evidências sanitizadas são registradas na issue #20.
 
-Publicar somente por GitHub → Vercel. Deixar a PR aberta para revisão. Não emitir convites reais nem conceder acessos durante a validação desta entrega. Depois do merge e deployment correspondente READY, o futuro painel poderá consumir estas APIs; usuários novos nunca devem depender do servidor antigo para login Google.
+Publicação da #25 concluída pelo fluxo GitHub → Vercel, com deployment correspondente READY. A orientação original de deixá-la aberta pertencia à revisão anterior ao merge. O painel #26 consome estas APIs e continua sujeito à própria revisão. Não emitir convites reais nem conceder acessos durante os testes remotos; usuários novos nunca devem depender do servidor antigo para login Google.
 
 Recuperação: interromper emissão/aceitação de convites se houver falha; se necessário desativar OIDC, preservando acesso por senha. Uma correção deve manter os guards `can_read` e os dados/auditoria. O servidor da PR #24 é compatível com o schema aditivo, mas não aceita os novos usuários Google convidados; preferir correção para frente após onboarding real. Não executar down migration ou restaurar o banco em uso como rotina.
 
@@ -65,4 +67,4 @@ Testes isolados cobrem emissão, expiração/revogação/replay, subject versus 
 
 `npm run smoke:mail:invitations` valida desktop/mobile, token fora de URL HTTP/DOM/storage, erros, sessão existente, teclado e handoff sintético Google. APIs são interceptadas; não emite convite real nem substitui um consentimento Google real. O Preview usa leitura administrativa, login/logout do proprietário e a página de convite sem criar pessoas/grants. Não se declara onboarding Google externo real como validado por esses testes.
 
-Quotas permanecem 20 mensagens/24h. Não há alterações de DNS, Resend, Sending, Receiving, Notifications ou estado das caixas existentes. Painel administrativo, gestão visual de sessões/perfil e quotas agregadas permanecem nas próximas entregas.
+Quotas permanecem 20 mensagens/24h. Não há alterações de DNS, Resend, Sending, Receiving, Notifications ou estado das caixas existentes. Painel administrativo em revisão na #26; gestão visual de sessões/perfil e quotas agregadas continuam nas próximas entregas.

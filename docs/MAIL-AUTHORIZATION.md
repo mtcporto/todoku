@@ -1,6 +1,6 @@
 # Mail — autorização por organização, domínio e caixa
 
-Entrega 1 do plano da [issue #20](https://github.com/mtcporto/todoku/issues/20). A migração aditiva `0007_mail_authorization` e os guards desta PR separam autenticação, administração e conteúdo. APIs/painel administrativos, convites e novos provisionamentos ficam nas próximas entregas.
+Entrega 1 do plano da [issue #20](https://github.com/mtcporto/todoku/issues/20), publicada pela PR #23 em `85c17e7`. A migração aditiva `0007_mail_authorization` e os guards separam autenticação, administração e conteúdo. As APIs (#24) e os convites/sessões (#25) também estão publicados; o painel #26 permanece em revisão. [Estado atual e histórico do plano](MAIL-MVP3-PLAN.md).
 
 ## Modelo e permissões
 
@@ -60,6 +60,6 @@ Validação local: 111 testes aprovados, typecheck e build aprovados; contratos 
 
 ## Publicação e rollback
 
-A migração compatível precede o código. A PR #23 foi integrada em `85c17e7` e seu deployment automático chegou a READY, com o alias `todoku.com.br` e os fluxos de senha, sessão, conteúdo, anexos e logout validados. [Evidências da publicação e recuperação](https://github.com/mtcporto/todoku/issues/20#issuecomment-6669346903). Os guards compatíveis com `can_read` já estão na main. A [PR de APIs administrativas](MAIL-ADMIN-API.md) usa essa base e permanece sujeita à revisão; não aplica permissões remotamente durante seus testes.
+A migração compatível precedeu o código. A PR #23 foi integrada em `85c17e7` e seu deployment automático chegou a READY, com o alias `todoku.com.br` e os fluxos de senha, sessão, conteúdo, anexos e logout validados. [Evidências da publicação e recuperação](https://github.com/mtcporto/todoku/issues/20#issuecomment-6669346903). Os guards compatíveis com `can_read` já estão na main. As [APIs administrativas #24](MAIL-ADMIN-API.md) foram publicadas em `37e20d4`; a referência anterior à revisão dessas APIs é histórica. Não aplicar permissões remotas durante os testes do painel #26.
 
 Depois de introduzir grants sem leitura, **não voltar a versão que ignore `can_read`**. Em caso de falha, bloquear a funcionalidade afetada preservando guards/tabelas/auditorias. Sem down migration destrutiva ou restore sobre banco ativo como rotina; restaurar primeiro em ambiente isolado para recuperação planejada.
