@@ -14,10 +14,11 @@ ativação individual, operação visual do Hub e consumidor real. Sequência de
 2. Interface mínima `/hub`, separada de `/mail/admin`.
 3. Boas-vindas do MinhaNota consumindo a API; validação integrada em dry-run.
 
-Essas entregas estão **em revisão**, não publicadas. A documentação canônica da
-PR #30 já foi integrada à `main` por squash em `992590fa`. A branch da PR #31
-foi sincronizada com essa base, preservando as adições do Hub e sem merge das
-PRs de implementação.
+A documentação canônica da PR #30 foi integrada por squash em `992590fa`.
+A base de configuração/API da PR #31 também foi integrada à `main`, no commit
+`28d0c47782125dc55c227c296adabfdcea15b92f`. O painel da PR #32 permanece
+**em revisão**, sincronizado com essa base. Integração do código não comprova
+migração remota, configuração operacional do piloto ou autorização de envio real.
 
 ## Configuração e compatibilidade
 
@@ -111,3 +112,62 @@ allowlist, orçamento e evento **novo**. Simulações terminam em `dry_run`/fila
 
 SSO, agendamento avançado, marketing, outros provedores e onboarding universal
 continuam adiados. Todoku Mail não é parte desta implementação.
+
+## Interface e evidências locais
+
+`/hub` permite selecionar organização/aplicação, adotar o catálogo, cadastrar
+aplicação em dry-run, criar versões, associar/ativar/desativar eventos, visualizar
+prévia e consultar estados/erros/auditoria. Login por senha reutiliza a sessão
+existente; uma sessão Google já aberta também é reconhecida. Não há novo fluxo
+OIDC nem papel derivado do endereço de e-mail.
+
+Confirmações capturam caminho e payload completos antes de abrir o diálogo;
+enquanto aberto, os controles externos ficam inertes pelo modal nativo.
+Confirmação envia o snapshot exibido, sem reler formulários ou catálogos. Contextos
+de organização/aplicação têm estado separado e requests cancelados ao sair.
+Credenciais novas só aparecem uma vez, sem armazenamento no navegador.
+
+Validações executadas nesta entrega: 159 testes automatizados do Hub/Mail,
+typecheck e build; `npm run smoke:hub` em 1280×900 e 390×844, com handlers reais
+contra fixtures libSQL isoladas. Cobertura de senha/logout/revogação, adoção
+desabilitada, versão, formulário editado antes da confirmação, igualdade
+diálogo/request, cancelamento, modal por teclado, troca de organização e ausência
+de overflow horizontal, estados de mensagens e falhas sem exposição de conteúdo.
+As cinco suítes de UI existentes do Mail também passaram
+localmente; o CI repete as seis suítes. Screenshots/evidências sanitizadas ficam localmente
+em `.vercel/hub-ui`, fora do Git.
+
+`npm run smoke:hub:consumer -- <caminho/minhanota/src/lib/email/todoku.ts>` executa
+o consumidor **real** por HTTP loopback, com bancos separados do Hub e MinhaNota.
+A perda simulada do recibo após commit produz 202/replay, um evento, uma tentativa,
+`minhanota.welcome@1`, estado `dry_run`, auditoria e integridade OK. Nenhuma
+chamada externa de e-mail ou mutação remota. Esse teste cruzado exige os dois
+checkouts revisados; o CI de cada repositório testa sua própria implementação.
+
+Referências: [backend #31, integrado](https://github.com/mtcporto/todoku/pull/31),
+[painel #32](https://github.com/mtcporto/todoku/pull/32) e
+[consumidor MinhaNota #3](https://github.com/mtcporto/minhanota/pull/3).
+Documentação #30 e backend #31 já estão na `main`; a PR #32 compara somente o
+painel, seus scripts de validação e documentação com essa base. Como evidência
+histórica da preparação, os três Previews automáticos chegaram a READY nos
+commits correspondentes. A interface
+publicada do painel foi testada também no Preview protegido, com autenticação
+Vercel restrita à origem e todas as APIs desviadas para fixtures locais. Isso
+valida o build publicado, **não** uma configuração operacional remota do piloto.
+
+### Revalidação após integração do backend
+
+A PR #32 foi sincronizada com a `main` em `28d0c477`, preservando integralmente
+componentes, scripts e o backend já integrado. O diff da PR ficou restrito a 13
+arquivos de painel, navegação, validação e documentação. O head de sincronização
+`340beb7` passou nos 159 testes, typecheck, build, seis suítes de interface e
+smoke MinhaNota com bancos locais isolados; o
+[CI correspondente](https://github.com/mtcporto/todoku/actions/runs/42231935714)
+também passou. Nenhuma migração remota, credencial ou envio real foi alterado.
+
+A Vercel não registrou deployment nem status para esse push, apesar do CI
+aprovado. Após inspeção somente leitura da integração e ausência de um comando
+de build ignorado, esta evidência foi registrada em novo commit documental,
+fornecendo um novo evento de push pelo GitHub. Não foi executado deploy manual
+nem modificada a configuração da integração. Os resultados finais do novo head
+ficam registrados na PR, sem tratar o Preview antigo como validação do novo SHA.

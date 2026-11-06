@@ -19,7 +19,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - name: Verify composer desktop and mobile without external services
+      - name: Verify Mail and Hub desktop and mobile without external services
         run: |
           npm run start -- --hostname 127.0.0.1 --port 3039 > /tmp/todoku-ux-server.log 2>&1 &
           server_pid=$!
@@ -33,3 +33,4 @@ jobs:
           npm run smoke:mail:invitations
           npm run smoke:mail:admin
           npm run smoke:mail:profile
+          npm run smoke:hub
