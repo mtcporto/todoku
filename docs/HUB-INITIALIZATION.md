@@ -91,14 +91,17 @@ Nenhum privilégio foi inferido do e-mail, domínio ou papel no Mail.
 - 159 testes automatizados locais, typecheck e build aprovados; os testes
   utilizam bancos isolados. Não houve alteração de código ou migração.
 
-**Pendente:** conferência manual do painel usando a sessão Google já existente.
-O acesso automatizado ao navegador local retornou
-`Computer Use native pipe is unavailable`; a participação foi solicitada ao
-responsável. A validação por senha acima não é prova dessa sessão Google.
+**Sessão Google existente:** após a solicitação de conferência usando essa
+sessão, o responsável confirmou manualmente: “organização todoku aparece”.
+Essa evidência humana complementa os testes automatizados por senha; o acesso
+automatizado ao navegador local retornou `Computer Use native pipe is unavailable`.
+A comparação com o backup confirmou que as duas sessões anteriores permanecem
+inalteradas. Não houve novo consentimento automatizado nem alteração de OAuth.
 
 Relatórios, contagens, digests e screenshots de validação estão somente no
-diretório privado do ponto de controle. A instalação administrativa está
-acessível por senha; a configuração e o piloto MinhaNota continuam pendentes.
+diretório privado do ponto de controle. O acesso administrativo foi validado
+com senha e sessão Google existente; a configuração e o piloto MinhaNota
+continuam pendentes.
 
 ## Recuperação e próxima operação
 

@@ -61,7 +61,7 @@ ou migração remota.
 **Estado posterior (06/11):** PRs #31/#32 integradas. Mediante ponto de controle
 e autorização explícita separados, 0009 aplicada e bootstrap restrito ao UUID
 interno aprovado no tenant `todoku`, com auditoria. Painel/APIs conferidos por
-senha; sessão Google existente aguarda confirmação manual. MinhaNota ainda não
+senha; o responsável confirmou a organização na sessão Google existente. MinhaNota ainda não
 configurado, sem envio real. [Evidências e recuperação](HUB-INITIALIZATION.md).
 
 ## Histórico e referências

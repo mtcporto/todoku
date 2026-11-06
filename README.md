@@ -19,7 +19,7 @@ O [MVP funcional do Hub](docs/HUB-MVP.md) tem backend e catálogo por aplicaçã
 integrados na #31. O painel mínimo `/hub` foi integrado na #32 (`2648f5e`).
 A migração 0009 e o bootstrap administrativo autorizado foram aplicados e
 validados; acesso por senha, APIs e painel em desktop/celular conferidos em
-Production. A conferência da sessão Google existente está pendente. O tenant
+Production. O responsável confirmou a organização na sessão Google existente. O tenant
 `todoku` ainda não tem aplicações; o piloto MinhaNota foi validado somente
 localmente em dry-run. [Evidências operacionais](docs/HUB-INITIALIZATION.md).
 Nenhum envio real foi autorizado por essa inicialização.

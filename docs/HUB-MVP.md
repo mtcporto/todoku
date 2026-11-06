@@ -5,8 +5,8 @@
 PRs #30–#32 integradas; painel publicado em `2648f5e`. Em 06/11/2026, após backup
 restaurado localmente e confirmação explícita do ponto de controle, 0009 e
 bootstrap administrativo restrito foram aplicados. APIs, acesso por senha,
-painel desktop/mobile e Mail validados em Production. A conferência manual da
-sessão Google existente permanece pendente. O tenant `todoku` está sem
+painel desktop/mobile e Mail validados em Production. O responsável confirmou
+manualmente a organização na sessão Google existente. O tenant `todoku` está sem
 aplicações; MinhaNota continua não configurado. Não houve envio real.
 Ver [registro operacional, evidências e recuperação](HUB-INITIALIZATION.md).
 
