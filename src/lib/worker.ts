@@ -81,6 +81,15 @@ async function authorizeSend(db: Client, job: Claim, now: number): Promise<{ con
     const config = configurationFromRow(result.rows[0]);
     if (config.status !== "active") return { error: "configuration_revoked" };
     if (job.mode !== config.mode) return { error: "configuration_mode_changed" };
+    const managedSchema = (await tx.execute("SELECT 1 FROM schema_migrations WHERE version='0009_hub_operations'")).rows.length;
+    if (managedSchema) {
+      const communication = (await tx.execute({ sql: `SELECT b.enabled FROM outbox_messages o
+        JOIN events e ON e.tenant_id=o.tenant_id AND e.application_id=o.application_id AND e.id=o.event_id
+        JOIN hub_applications h ON h.tenant_id=e.tenant_id AND h.application_id=e.application_id
+        LEFT JOIN hub_event_bindings b ON b.tenant_id=e.tenant_id AND b.application_id=e.application_id AND b.event_type=e.event_type
+        WHERE o.tenant_id=? AND o.application_id=? AND o.id=?`, args: [job.tenantId, job.applicationId, job.id] })).rows[0];
+      if (communication && !Number(communication.enabled)) return { error: "communication_disabled" };
+    }
     const suppressed = await tx.execute({ sql: "SELECT email FROM recipient_suppressions WHERE tenant_id = ? AND application_id = ? AND email = ?", args: [job.tenantId, job.applicationId, job.message.to[0].toLowerCase()] });
     if (suppressed.rows.length) return { error: "recipient_suppressed" };
     if (job.mode === "test") {

@@ -2,6 +2,11 @@
 
 Node 24, Next 16, React 19 e TypeScript 6. `POST /api/v1/events` só retorna **202 após commit** de evento, outbox, snapshot de entrega e auditoria no Turso. O worker processa dry-run por padrão. Envios de teste dependem de autorização separada; consulte [DELIVERY.md](DELIVERY.md).
 
+O [MVP funcional do Hub](HUB-MVP.md) adiciona catálogo por aplicação e API
+administrativa `/api/hub/*`. Após adoção explícita, o binding habilitado resolve
+uma versão imutável do template. Novos eventos desabilitados retornam
+`422 communication_disabled`; aplicações legadas preservam o contrato anterior.
+
 O módulo independente Todoku Mail usa `/api/mail/*`, webhook `/api/webhooks/mail/resend/<source-id>` e worker autenticado `/api/internal/mail-worker`. Login, grants, limites, retenção e setup estão em [MAIL.md](MAIL.md). O recebimento real permanece desativado; isso não altera os contratos de Notifications abaixo.
 
 ## Configuração e migração
