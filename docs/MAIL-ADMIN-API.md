@@ -1,8 +1,8 @@
 # Mail — APIs administrativas (MVP 3, entrega 2)
 
-> Publicada pela PR #24 em `37e20d4`. A entrega 3 acrescenta [convites e sessões](MAIL-USERS-INVITATIONS.md), preservando estes endpoints, escopos e guards.
+> Publicada pela PR #24 em `37e20d4`. A #25 também está publicada em `1b6cd00`, acrescentando [convites e sessões](MAIL-USERS-INVITATIONS.md) e preservando estes endpoints, escopos e guards. O [painel #26](MAIL-ADMIN-PANEL.md) permanece em revisão.
 
-Base: main `85c17e7`, depois da publicação da PR #23. Esta entrega reutiliza a migração `0007` e os guards de conteúdo, sem nova migração ou backfill. A PR deve permanecer aberta para revisão; não autoriza mutações reais de permissões durante os testes remotos.
+Base histórica da implementação: main `85c17e7`, depois da publicação da PR #23. Esta entrega reutilizou a migração `0007` e os guards de conteúdo, sem nova migração ou backfill. A restrição de manter a #24 aberta valia para sua revisão, já concluída. Testes remotos não autorizam mutações reais de permissões.
 
 ## Autenticação e escopos
 

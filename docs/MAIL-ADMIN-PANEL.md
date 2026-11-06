@@ -38,6 +38,8 @@ Trocar organização desmonta o contexto anterior, descartando edições/confirm
 
 Cada escrita exige diálogo com alvo/organização explícitos, foco inicial em **Cancelar**, Escape e restauração de foco. A confirmação fica bloqueada enquanto grava, evitando duplo clique; não há atualização otimista ou retry automático. Em falha de rede/503, cancelar e atualizar para conferir o resultado antes de repetir. Convite cujo link não chegou deve ser revogado antes de emissão deliberada de outro.
 
+A revisão conserva os valores e alvos daquela ação, sem reler o formulário ao confirmar. Cancelar e editar exige nova revisão; catálogos atualizados fornecem os novos rótulos sem trocar os IDs enviados. Mudar de organização descarta a confirmação pendente. Regressões comparam o texto e os três bits exibidos com método, caminho e JSON efetivamente enviados, incluindo e-mail, UUID opcional e validade do convite, suspensão/reativação e revogações. Nenhuma alteração nos guards, APIs ou migrações foi necessária nesta revisão pré-merge.
+
 PUT mantém o contrato completo existente, sem garantia atômica de detecção de edição concorrente; coordenar alterações entre administradores. O painel não contorna delegação, membership inativa, sessão revogada ou proteção do último administrador.
 
 ## Validação e rollout

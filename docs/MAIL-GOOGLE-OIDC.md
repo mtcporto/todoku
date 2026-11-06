@@ -1,6 +1,10 @@
 # Configurar e validar o Google OIDC
 
-> Evolução na entrega 3: [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md). O login passa a aceitar bindings internos autorizados; novas pessoas exigem convite válido ou vínculo explícito iniciado pela própria sessão de usuário com membership ativa. Não há vínculo por coincidência de e-mail, cadastro público ou grants automáticos. O gate verificado do proprietário permanece. O procedimento abaixo registra o provisionamento original do piloto; a audiência/test users no Google não é alterada por esta PR.
+> Estado atual: OIDC publicado pela #21 e [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md) pela #25 (`1b6cd00`). Login Google do proprietário validado em produção após a #25, no mesmo UUID, com sessão `google` e fallback por senha preservado. O responsável confirmou OAuth External / In production no Console; não foi alterada a configuração. Novas pessoas exigem onboarding/binding autorizado; não há coincidência de e-mail, cadastro público ou grants automáticos. O gate do proprietário permanece. Onboarding real da segunda conta pendente; painel #26 em revisão.
+
+## Histórico — provisionamento original do piloto #21
+
+Os pré-requisitos, a ordem de implantação e os snapshots abaixo registram a preparação original. As referências a Production desativada, aprovação futura e validação obrigatória em Preview pertencem àquela etapa; a ativação direta em produção foi posteriormente autorizada e concluída. Não repetir migrações ou reconfigurar o cliente com base neste histórico.
 
 Primeira entrega da [issue #20](https://github.com/mtcporto/todoku/issues/20). O login atual é preservado. A [auditoria e proposta de migração](MAIL-MVP3-AUDIT.md) descrevem os limites desta PR.
 

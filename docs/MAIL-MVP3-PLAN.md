@@ -1,10 +1,21 @@
 # MVP 3 — plano administrativo, quotas e usabilidade
 
-> Entregas 1–3 publicadas pelas PRs #23/#24/#25, com login Google do proprietário validado. A entrega 4 prepara o [painel administrativo do módulo Mail](MAIL-ADMIN-PANEL.md), reutilizando APIs existentes, sem nova migração ou alteração de produção. Permanece em PR para revisão; mutações de teste apenas em fixtures locais.
+## Estado atual das entregas
 
-> Entregas 1 e 2 publicadas pelas PRs #23/#24, em `85c17e7` e `37e20d4`. A entrega 3 implementa [usuários, convites e sessões](MAIL-USERS-INVITATIONS.md), com migração aditiva `0008`, onboarding OIDC controlado e revogação pessoal de sessões. Permanece para revisão, sem merge ou criação remota de convites/usuários/grants durante a validação.
+| Entrega | PR / commit integrado | Estado |
+| --- | --- | --- |
+| 1. [Autorização e migração 0007](MAIL-AUTHORIZATION.md) | #23 / `85c17e7` | Publicada |
+| 2. [APIs administrativas](MAIL-ADMIN-API.md) | #24 / `37e20d4` | Publicada |
+| 3. [Usuários, convites e sessões / 0008](MAIL-USERS-INVITATIONS.md) | #25 / `1b6cd00` | Publicada; login Google do proprietário validado; onboarding real de convidado pendente |
+| 4. [Painel administrativo do módulo Mail](MAIL-ADMIN-PANEL.md) | #26 | Em revisão, sem merge ou publicação em produção |
+| 5–6. Orçamentos, consumo e quotas | — | Pendentes; manter 20 mensagens/24h |
+| 7. Perfil, login e navegação | — | Pendente; botão **Sair** antecipado na #23 |
 
-> Plano aprovado pelo responsável. A PR 1 implementa [autorização e migração 0007](MAIL-AUTHORIZATION.md), incluindo bootstrap auditado pelo UUID e a pequena correção visual **Sair** antecipada da PR 7. As próximas entregas continuam separadas. Manter 20 mensagens/24h até orçamento agregado e contabilização por destinatário.
+A #26 reutiliza integralmente as APIs e migrações publicadas. Oferece catálogos, grants, convites sem envio automático e suspensão/reativação de memberships. Edição de papéis e criação/ativação de domínios/caixas não integram esta PR. Escritas de teste usam fixtures locais isoladas, inclusive ao renderizar o Preview conectado ao banco operacional. Não repetir 0007/0008.
+
+## Histórico — proposta original após PRs #21/#22
+
+O restante deste documento preserva a auditoria e o plano originais, incluindo lacunas e escopo proposto à época; não descreve o estado atual. A tabela acima e os documentos de cada entrega registram sua evolução. A quota permanece 20 mensagens/24h até orçamento agregado e contabilização por destinatário.
 
 Proposta após auditoria somente de leitura em 05/11/2026. Base: `main` em `1fec48a`, migrações `0001`–`0006`, PRs #21/#22 concluídas. Esta proposta não aplica migrações, altera quotas ou concede papéis. Evidências e lacunas: [auditoria](MAIL-MVP3-AUDIT.md).
 

@@ -14,6 +14,12 @@ const browser = await chromium.launch({ headless: true }),
   results: object[] = [];
 await mkdir(".vercel/admin-ui", { recursive: true });
 type Fixture = Awaited<ReturnType<typeof fixture>>;
+type RecordedRequest = {
+  path: string;
+  method: string;
+  body: unknown;
+  status: number;
+};
 async function signIn(
   context: BrowserContext,
   f: Fixture,
@@ -33,7 +39,7 @@ async function signIn(
 }
 async function bridge(context: BrowserContext, f: Fixture) {
   const errors: string[] = [],
-    requests: { path: string; method: string; status: number }[] = [];
+    requests: RecordedRequest[] = [];
   context.on("page", (page) =>
     page.on("pageerror", (error) => errors.push(error.name)),
   );
@@ -77,6 +83,7 @@ async function bridge(context: BrowserContext, f: Fixture) {
     requests.push({
       path: url.pathname + url.search,
       method: request.method(),
+      body: request.postData() ? JSON.parse(request.postData()!) : undefined,
       status: response.status,
     });
     if (request.method() !== "GET")
@@ -101,6 +108,29 @@ async function confirm(page: Page) {
     .click();
   await dialog.waitFor({ state: "hidden" });
   await ready(page);
+}
+async function reviewMatches(
+  page: Page,
+  title: string,
+  targets: string[],
+  permissions?: string[],
+) {
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("heading", { name: title, exact: true }).waitFor();
+  assert.deepEqual(await dialog.locator("strong").allTextContents(), targets);
+  if (permissions)
+    assert.deepEqual(await dialog.locator("li").allTextContents(), permissions);
+}
+function mutationMatches(
+  requests: RecordedRequest[],
+  expected: Omit<RecordedRequest, "status">,
+) {
+  const last = requests.findLast((request) => request.method !== "GET");
+  assert.ok(last);
+  assert.deepEqual(
+    { path: last.path, method: last.method, body: last.body },
+    expected,
+  );
 }
 async function selectGrant(page: Page, identity = "ia", user = "bob") {
   await page.getByLabel("Caixa postal").selectOption(identity);
@@ -136,6 +166,7 @@ try {
           "INSERT INTO mail_admin_grants(id,tenant_id,user_id,scope,domain_id) VALUES ('domain-b','b','alice','domain','db')",
           "UPDATE mail_identity_grants SET can_send=1,can_manage=1 WHERE user_id='alice'",
           "UPDATE mail_identities SET status='disabled' WHERE id='private'",
+          "INSERT INTO mail_users(id,username,password_hash) VALUES ('invite-target','invite-target','!fixture')",
         ],
         "write",
       );
@@ -190,13 +221,19 @@ try {
             ),
         );
       }
-      await selectGrant(page);
-      await page.getByLabel("Enviar mensagens", { exact: true }).check();
+      await selectGrant(page, "private", "alice");
+      await page.getByLabel("Ler mensagens", { exact: true }).check();
       await page
         .getByRole("button", { name: "Revisar permissões", exact: true })
         .click();
       const dialog = page.getByRole("dialog");
       await dialog.waitFor();
+      await reviewMatches(
+        page,
+        "Alterar permissões de conteúdo",
+        ["alice", "private@a.example.invalid", "a"],
+        ["Leitura: Sim", "Envio: Não", "Gerenciamento: Não"],
+      );
       assert.equal(
         await dialog
           .getByRole("button", { name: "Cancelar", exact: true })
@@ -219,6 +256,10 @@ try {
         ).rows[0].n,
         0,
       );
+      // Cancel, change both targets and permission bits, then compare the new
+      // confirmation with the actual request (including the failed audit attempt).
+      await selectGrant(page);
+      await page.getByLabel("Enviar mensagens", { exact: true }).check();
       await page
         .getByRole("button", { name: "Revisar permissões", exact: true })
         .click();
@@ -229,6 +270,17 @@ try {
         .getByRole("button", { name: "Confirmar alteração", exact: true })
         .click();
       await dialog.locator("p[role=alert]").waitFor();
+      await reviewMatches(
+        page,
+        "Alterar permissões de conteúdo",
+        ["bob", "inbox@a.example.invalid", "a"],
+        ["Leitura: Não", "Envio: Sim", "Gerenciamento: Não"],
+      );
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/mailboxes/ia/grants/bob",
+        method: "PUT",
+        body: { canRead: false, canSend: true, canManage: false },
+      });
       assert.equal(
         (
           await f.db.execute(
@@ -256,6 +308,11 @@ try {
         });
       await dialog.waitFor({ state: "hidden" });
       await ready(page);
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/mailboxes/ia/grants/bob",
+        method: "PUT",
+        body: { canRead: false, canSend: true, canManage: false },
+      });
       assert.equal(
         requests.filter(
           (r) =>
@@ -274,6 +331,13 @@ try {
       );
       // Reload pages and verify the editor preserves an existing send grant beyond
       // the first 100 entries instead of assuming an unloaded row has no permissions.
+      await f.db.execute(
+        "UPDATE mail_users SET username='bob-refreshed' WHERE id='bob'",
+      );
+      await page
+        .getByRole("button", { name: "Atualizar painel", exact: true })
+        .click();
+      await ready(page);
       while (await loadMembers.count()) {
         await loadMembers.click();
         await page.waitForFunction(
@@ -293,7 +357,18 @@ try {
       await page
         .getByRole("button", { name: "Revisar permissões", exact: true })
         .click();
+      await reviewMatches(
+        page,
+        "Alterar permissões de conteúdo",
+        ["bob-refreshed", "inbox@a.example.invalid", "a"],
+        ["Leitura: Sim", "Envio: Sim", "Gerenciamento: Sim"],
+      );
       await confirm(page);
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/mailboxes/ia/grants/bob",
+        method: "PUT",
+        body: { canRead: true, canSend: true, canManage: true },
+      });
       grant = (
         await f.db.execute(
           "SELECT can_read,can_send,can_manage FROM mail_identity_grants WHERE user_id='bob' AND identity_id='ia'",
@@ -303,6 +378,11 @@ try {
         [grant.can_read, grant.can_send, grant.can_manage],
         [1, 1, 1],
       );
+      await f.db.execute("UPDATE mail_users SET username='bob' WHERE id='bob'");
+      await page
+        .getByRole("button", { name: "Atualizar painel", exact: true })
+        .click();
+      await ready(page);
       while (await loadMembers.count()) {
         await loadMembers.click();
         await page.waitForFunction(
@@ -315,7 +395,13 @@ try {
       await page
         .getByRole("button", { name: "Suspender bob", exact: true })
         .click();
+      await reviewMatches(page, "Suspender membership", ["bob", "a"]);
       await confirm(page);
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/memberships/bob",
+        method: "PUT",
+        body: { status: "suspended" },
+      });
       assert.equal(
         (
           await f.db.execute(
@@ -350,7 +436,13 @@ try {
       await page
         .getByRole("button", { name: "Reativar bob", exact: true })
         .click();
+      await reviewMatches(page, "Reativar membership", ["bob", "a"]);
       await confirm(page);
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/memberships/bob",
+        method: "PUT",
+        body: { status: "active" },
+      });
       while (await loadMembers.count()) {
         await loadMembers.click();
         await page.waitForFunction(
@@ -395,7 +487,17 @@ try {
           exact: true,
         })
         .click();
+      await reviewMatches(page, "Revogar acesso à caixa", [
+        "bob",
+        "inbox@a.example.invalid",
+        "a",
+      ]);
       await confirm(page);
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/mailboxes/ia/grants/bob",
+        method: "DELETE",
+        body: undefined,
+      });
       assert.equal(
         (
           await f.db.execute(
@@ -412,10 +514,58 @@ try {
         ).rows[0].n,
         1,
       );
-      await page.getByLabel("E-mail convidado").fill("guest@example.invalid");
+      // Simulate an external context change while a confirmation is open. The
+      // modal normally makes this select inert; dispatching the change exercises
+      // the context teardown without confirming or forwarding a stale action.
+      await selectGrant(page, "ia", "a-user-000");
+      await page.getByLabel("Enviar mensagens", { exact: true }).check();
+      await page
+        .getByRole("button", { name: "Revisar permissões", exact: true })
+        .click();
+      await reviewMatches(
+        page,
+        "Alterar permissões de conteúdo",
+        ["a-user-000", "inbox@a.example.invalid", "a"],
+        ["Leitura: Não", "Envio: Sim", "Gerenciamento: Não"],
+      );
+      const beforeContextChange = requests.filter(
+        (r) => r.method !== "GET",
+      ).length;
+      await page.getByLabel("Organização atual").evaluate((element) => {
+        const select = element as HTMLSelectElement;
+        select.value = "b";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await dialog.waitFor({ state: "hidden" });
+      await ready(page);
+      await selectGrant(page, "ib", "bob");
+      await page
+        .getByRole("button", { name: "Revisar permissões", exact: true })
+        .click();
+      await reviewMatches(
+        page,
+        "Alterar permissões de conteúdo",
+        ["bob", "inbox@b.example.invalid", "b"],
+        ["Leitura: Sim", "Envio: Não", "Gerenciamento: Não"],
+      );
+      await page.keyboard.press("Escape");
+      assert.equal(
+        requests.filter((r) => r.method !== "GET").length,
+        beforeContextChange,
+      );
+      await page.getByLabel("Organização atual").selectOption("a");
+      await ready(page);
+      await page
+        .getByLabel("E-mail convidado")
+        .fill("discarded@example.invalid");
       await page
         .getByRole("button", { name: "Revisar convite", exact: true })
         .click();
+      await reviewMatches(page, "Criar convite", [
+        "discarded@example.invalid",
+        "a",
+        "24 horas",
+      ]);
       await dialog
         .getByRole("button", { name: "Cancelar", exact: true })
         .click();
@@ -424,10 +574,33 @@ try {
           .rows[0].n,
         0,
       );
+      await page.getByLabel("E-mail convidado").fill("guest@example.invalid");
+      await page.getByLabel("Validade em horas").fill("48");
+      await page
+        .getByText("Convidar um usuário interno existente", { exact: true })
+        .click();
+      await page
+        .getByLabel("UUID do usuário existente (opcional)")
+        .fill("invite-target");
       await page
         .getByRole("button", { name: "Revisar convite", exact: true })
         .click();
+      await reviewMatches(page, "Criar convite", [
+        "guest@example.invalid",
+        "a",
+        "48 horas",
+        "invite-target",
+      ]);
       await confirm(page);
+      mutationMatches(requests, {
+        path: "/api/mail/admin/organizations/a/invitations",
+        method: "POST",
+        body: {
+          email: "guest@example.invalid",
+          userId: "invite-target",
+          expiresInHours: 48,
+        },
+      });
       const link = await page
           .getByLabel("Link pessoal de uso único")
           .inputValue(),
@@ -490,7 +663,19 @@ try {
           exact: true,
         })
         .click();
+      await reviewMatches(page, "Revogar convite", [
+        "guest@example.invalid",
+        "a",
+      ]);
+      const invitationId = String(
+        (await f.db.execute("SELECT id FROM mail_invitations")).rows[0].id,
+      );
       await confirm(page);
+      mutationMatches(requests, {
+        path: `/api/mail/admin/organizations/a/invitations/${invitationId}/revoke`,
+        method: "POST",
+        body: {},
+      });
       assert.equal(
         (await f.db.execute("SELECT state FROM mail_invitations")).rows[0]
           .state,
@@ -645,6 +830,9 @@ try {
         keyboardDialog: true,
         auditFailureFeedback: true,
         duplicateSubmitBlocked: true,
+        confirmationMatchesRequest: true,
+        editedFormsAndRefreshedCatalogs: true,
+        pendingConfirmationDiscardedOnContextChange: true,
         horizontalOverflow: false,
         remoteMutations: 0,
         externalEmails: 0,
