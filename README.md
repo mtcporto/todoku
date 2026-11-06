@@ -11,7 +11,7 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 
 ---
 
-**Todoku Mail — MVP 1:** webmail em `/mail`, com login real, grants por identidade, caixa unificada, filtros, leitura segura, threads e anexos autenticados. O piloto está **pausado**, sem alteração de DNS ou recebimento externo. R2 privado testado com PUT/GET/DELETE reais, chave restrita ao bucket e configuração de servidor Vercel pronta. Domínio/webhook Resend preparados; Receiving aguarda autorização explícita. Veja [docs/MAIL.md](docs/MAIL.md) e [preparação do piloto](docs/MAIL-ACTIVATION.md).
+**Todoku Mail:** módulo de webmail em `/mail`, com Receiving validado, composição/envio controlado, administração, usuários, perfil e sessões. MVP 3 entregas 1–4 e 7 publicadas; entregas 5–6 (orçamentos/consumo) adiadas. O painel `/mail/admin` não é o painel do Communication Hub. Veja [roadmap consolidado](docs/ROADMAP.md), [decisões](docs/DECISIONS.md) e [documentação Mail](docs/MAIL.md).
 
 ## 1. Fluxo Conceitual
 
@@ -55,7 +55,9 @@ A pilha tecnológica do Todoku é composta por:
 - **Persistência:** [Turso](https://turso.tech/) (libSQL / SQLite distribuído no Edge) para armazenamento de configurações, tenants, templates e logs de auditoria.
 - **Entrega de E-mails:** Resend API.
 
-### Evolução Incremental (Roadmap)
+### Evolução Incremental (visão histórica)
+
+Para prioridades e estados atuais, consultar [docs/ROADMAP.md](docs/ROADMAP.md) e [docs/DECISIONS.md](docs/DECISIONS.md). O diagrama abaixo representa a direção original, não um checklist de entregas concluídas.
 
 ```mermaid
 flowchart TD
@@ -72,8 +74,8 @@ flowchart TD
 
 **Trilha Mail:** Receiving do piloto validado em produção. MVP 2 adiciona composição, respostas, rascunhos e lixeira; envio externo segue bloqueado até autorização específica. Detalhes em [docs/MAIL.md](docs/MAIL.md) e [plano de Sending](docs/MAIL-OUTBOUND.md).
 
-**MVP 3:** autorização, APIs administrativas, convites/sessões e painel (#23–#26) publicados. A [entrega7 — perfil e navegação](docs/MAIL-PROFILE-NAVIGATION.md), issue #28, está em implementação/revisão antes das quotas agregadas (5–6); manter20 mensagens/24h. Estados antigos do piloto acima são históricos; consulte a documentação específica do Mail.
-5. **Etapa 5:** Painel administrativo para acompanhamento operacional, métricas de envio e configuração de tenants.
+**MVP 3 do Mail:** entregas 1–4 e 7 publicadas (#23–#26, #29); 5–6 adiadas. Limite vigente: 20 mensagens/24h por identidade. Estados anteriores do piloto são históricos.
+5. **Etapa 5 do Hub (planejada):** Painel administrativo do Communication Hub para métricas, políticas e tenants; distinto de `/mail/admin`.
 
 ---
 
