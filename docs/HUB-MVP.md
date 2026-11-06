@@ -154,3 +154,20 @@ commits correspondentes. A interface
 publicada do painel foi testada também no Preview protegido, com autenticação
 Vercel restrita à origem e todas as APIs desviadas para fixtures locais. Isso
 valida o build publicado, **não** uma configuração operacional remota do piloto.
+
+### Revalidação após integração do backend
+
+A PR #32 foi sincronizada com a `main` em `28d0c477`, preservando integralmente
+componentes, scripts e o backend já integrado. O diff da PR ficou restrito a 13
+arquivos de painel, navegação, validação e documentação. O head de sincronização
+`340beb7` passou nos 159 testes, typecheck, build, seis suítes de interface e
+smoke MinhaNota com bancos locais isolados; o
+[CI correspondente](https://github.com/mtcporto/todoku/actions/runs/42231935714)
+também passou. Nenhuma migração remota, credencial ou envio real foi alterado.
+
+A Vercel não registrou deployment nem status para esse push, apesar do CI
+aprovado. Após inspeção somente leitura da integração e ausência de um comando
+de build ignorado, esta evidência foi registrada em novo commit documental,
+fornecendo um novo evento de push pelo GitHub. Não foi executado deploy manual
+nem modificada a configuração da integração. Os resultados finais do novo head
+ficam registrados na PR, sem tratar o Preview antigo como validação do novo SHA.
