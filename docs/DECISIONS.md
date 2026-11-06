@@ -185,10 +185,14 @@ existentes. Sem atualização automática de catálogos, migração em build/req
 ou alterações no Mail. Enquanto não aplicada, administração ampliada falha
 explicitamente e ingestão anterior permanece compatível.
 
-**Estado de implementação:** renderização, catálogo, administração e testes
-locais implementados; publicação, migração remota e seleção operacional de
-nova versão precisam de evidência separada na PR. Não confundir implementação,
-Preview e Production.
+**Estado de implementação:** renderização, catálogo e administração implementados;
+167 testes, typecheck, build, consumidor real em fixture e interface
+desktop/celular aprovados. CI e Preview aprovados. 0010 aplicada no banco único
+em 06/11 após backup dos metadados; integridade/FKs, linhas existentes,
+eventos, tentativas, credenciais e configurações de transporte preservados.
+Publicação automática e seleção operacional da nova versão são registradas
+separadamente na [PR #37](https://github.com/mtcporto/todoku/pull/37).
+Não confundir implementação, Preview e Production.
 
 **Limites:** eventos específicos de seis projetos são propostas documentadas
 inativas. Sem emissores, campanhas, novos provedores, DNS, Google Workspace,

@@ -13,7 +13,7 @@
 | Frente | Situação conhecida | Próximo marco / condição |
 | --- | --- | --- |
 | Contratos de eventos, API e ingestão durável | Implementados; Turso, idempotência, worker autenticado e auditoria | Manter regressões e documentação de contratos |
-| Templates versionados, políticas, BYOK, Resend e webhooks | Base implementada; biblioteca global com 14 modelos padrão opcionais e alternativa visual MinhaNota, identidade por aplicação e prévia HTML/texto implementadas e testadas localmente | Publicar catálogo após 0010; personalização cria versão, binding muda somente por ação explícita. [Templates](HUB-TEMPLATES.md) |
+| Templates versionados, políticas, BYOK, Resend e webhooks | Biblioteca global com 14 modelos padrão opcionais e alternativa visual MinhaNota, identidade por aplicação e prévia HTML/texto implementadas e testadas; 0010 aplicada com integridade e preservação de linhas conferidas | Publicação e seleção operacional registradas na [PR #37](https://github.com/mtcporto/todoku/pull/37). Personalização cria versão; binding muda somente por ação explícita. [Templates](HUB-TEMPLATES.md) |
 | Notifications / entrega externa | **Dry-run por padrão**; marketing desabilitado | Ativação por tenant/aplicação somente com aprovação e validação operacional explícita |
 | Filas, cron e reagendamento de tentativas | **Implementados** como infraestrutura de processamento/retry | Auditar execução e observabilidade com evidências; não presumir dashboard pronto |
 | Agendamento futuro solicitado pela aplicação consumidora | **Planejado; não suportado pelo contrato atual de ingestão** | Definir campo/semântica da data futura, validação, políticas, persistência e testes antes de oferecer a capacidade |

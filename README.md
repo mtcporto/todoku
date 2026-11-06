@@ -28,7 +28,7 @@ A migração 0009 e o bootstrap administrativo autorizado foram aplicados e
 validados; acesso por senha, APIs e painel em desktop/celular conferidos em
 Production. O responsável confirmou a organização na sessão Google existente.
 A aplicação `todoku/minhanota` está configurada em Production, exclusivamente
-dry-run, com `minhanota.welcome@1`. Em 06/11, o teste HTTP autenticado
+dry-run, com `minhanota.welcome` versionado. Em 06/11, o teste HTTP autenticado
 **API → Hub foi validado em Production**: persistência, replay, snapshot,
 cron dry-run, status e auditoria. A credencial temporária autorizada foi
 revogada; o token do consumidor e seus históricos foram preservados.

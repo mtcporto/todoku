@@ -128,6 +128,12 @@ sessão continua disponível. Ingestão de aplicações legadas e gerenciadas
 anteriores continua compatível enquanto a migração aguarda execução.
 Não usar previews com banco compartilhado para testes mutáveis.
 
+Registro operacional desta entrega: [PR #37](https://github.com/mtcporto/todoku/pull/37).
+0010 aplicada ao banco único após backup dos metadados, integridade/FKs
+conferidas e nenhuma mudança em linhas existentes, eventos, tentativas,
+credenciais ou configurações de transporte. SHA/READY e versão selecionada
+para MinhaNota são registrados na PR, separadamente da validação local.
+
 Validação local: testes de renderização, catálogo/variáveis, bindings,
 rollback/auditoria, isolamento tenant/aplicação, snapshots, replay e dry-run.
 `npm run smoke:hub` usa handlers reais e SQLite isolado em desktop/celular,
