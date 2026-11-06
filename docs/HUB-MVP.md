@@ -6,8 +6,9 @@ PRs #30–#32 integradas; painel publicado em `2648f5e`. Em 06/11/2026, após ba
 restaurado localmente e confirmação explícita do ponto de controle, 0009 e
 bootstrap administrativo restrito foram aplicados. APIs, acesso por senha,
 painel desktop/mobile e Mail validados em Production. O responsável confirmou
-manualmente a organização na sessão Google existente. O tenant `todoku` está sem
-aplicações; MinhaNota continua não configurado. Não houve envio real.
+manualmente a organização na sessão Google existente. O estado inicial sem aplicações foi superado pelo piloto MinhaNota, concluído
+com provas separadas do callback dry-run e da entrega real controlada.
+Os controles dry-run foram restaurados; ver [evidências atuais](HUB-MINHANOTA-PILOT.md).
 Ver [registro operacional, evidências e recuperação](HUB-INITIALIZATION.md).
 
 ## Histórico — diagnóstico e sequência das PRs #31/#32
@@ -52,8 +53,8 @@ executada remotamente durante a implementação original; a execução operacion
 posterior e sua autorização estão em [HUB-INITIALIZATION.md](HUB-INITIALIZATION.md).
 
 Aplicações legadas mantêm os três templates originais até adotar explicitamente
-o catálogo. A adoção é irreversível pela interface e começa com as quatro
-comunicações comuns **desabilitadas**, sem alterar o provedor. Confirmar essa
+o catálogo. A adoção é irreversível pela interface e começa com o pacote
+selecionado de comunicações **desabilitadas**, sem alterar o provedor. Confirmar essa
 mudança para não interromper um evento legado em uso. Não há fallback para um
 template global quando a aplicação já tem catálogo próprio.
 
@@ -66,8 +67,11 @@ Configuração real de envio continua com o procedimento autorizado de [Delivery
 
 ## Templates e políticas
 
-Comuns: boas-vindas, verificação de e-mail, recuperação de senha e alerta de
-segurança. Não criam tokens de autenticação: a aplicação consumidora gera seus
+O pacote original tinha boas-vindas, verificação de e-mail, recuperação de senha
+e alerta de segurança. A [biblioteca ampliada](HUB-TEMPLATES.md), com migração
+0010, oferece 14 modelos padrão opcionais e alternativa visual MinhaNota,
+identidade por aplicação e prévia HTML/texto. Não cria tokens de autenticação:
+a aplicação consumidora gera seus
 links e decide o evento. Apenas textos e URLs HTTPS sem credenciais são aceitos.
 Não há HTML editável, scripts, helpers ou includes remotos. Variáveis são
 obrigatórias, limitadas e estritas; HTML é escapado e cabeçalhos não aceitam
@@ -102,7 +106,7 @@ destinatários ou corpos de mensagens processadas.
 | `POST /tenants/:tenant/applications/:app/catalog` | `{name}`; adoção explícita do catálogo em aplicação existente |
 | `POST /tenants/:tenant/applications/:app/templates` | `{id,subject,body,variables:[{name,type:"text" ou "https_url"}]}`; nova versão |
 | `POST /tenants/:tenant/applications/:app/bindings` | `{eventType,templateId,templateVersion,enabled}` |
-| `POST /tenants/:tenant/applications/:app/preview` | `{templateId,templateVersion,data}`; devolve assunto e texto renderizados, não envia |
+| `POST /tenants/:tenant/applications/:app/preview` | `{templateId,templateVersion,data}`; devolve assunto, texto e HTML renderizados, não envia |
 | `GET /tenants/:tenant/applications/:app/events?page=0` | 25 resultados/página; estados, tentativas, erros e últimas auditorias de configuração/worker |
 
 Ingestão/status do consumidor continuam em `/api/v1/events`; o contrato não

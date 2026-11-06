@@ -13,15 +13,16 @@
 | Frente | Situação conhecida | Próximo marco / condição |
 | --- | --- | --- |
 | Contratos de eventos, API e ingestão durável | Implementados; Turso, idempotência, worker autenticado e auditoria | Manter regressões e documentação de contratos |
-| Templates versionados, políticas, BYOK, Resend e webhooks | Base implementada | Revisar lacunas por caso de uso antes de ampliar escopo |
+| Templates versionados, políticas, BYOK, Resend e webhooks | Base implementada; biblioteca global com 14 modelos padrão opcionais e alternativa visual MinhaNota, identidade por aplicação e prévia HTML/texto implementadas e testadas localmente | Publicar catálogo após 0010; personalização cria versão, binding muda somente por ação explícita. [Templates](HUB-TEMPLATES.md) |
 | Notifications / entrega externa | **Dry-run por padrão**; marketing desabilitado | Ativação por tenant/aplicação somente com aprovação e validação operacional explícita |
 | Filas, cron e reagendamento de tentativas | **Implementados** como infraestrutura de processamento/retry | Auditar execução e observabilidade com evidências; não presumir dashboard pronto |
 | Agendamento futuro solicitado pela aplicação consumidora | **Planejado; não suportado pelo contrato atual de ingestão** | Definir campo/semântica da data futura, validação, políticas, persistência e testes antes de oferecer a capacidade |
 | Preferências de destinatário, anti-fatigue e opt-out | Evolução planejada | Definir contrato e persistência antes da UI |
-| MVP funcional do Hub | Backend #31 e painel #32 publicados; 0009, bootstrap e acesso administrativo validados; `todoku/minhanota` com **API → Hub e Google → MinhaNota → Hub validados em Production dry-run** | [Inicialização](HUB-INITIALIZATION.md) e [evidências do piloto](HUB-MINHANOTA-PILOT.md); entrega real depende de confirmação e transporte verificado |
+| MVP funcional do Hub | Backend #31 e painel #32 publicados; 0009, bootstrap e acesso administrativo validados; piloto MinhaNota concluído, inclusive entrega real restrita e controles restaurados na #36 | [Inicialização](HUB-INITIALIZATION.md) e [evidências do piloto](HUB-MINHANOTA-PILOT.md); não repetir validação do transporte para testar templates |
 | Painel de administração do Hub | Interface mínima `/hub` publicada e validada por senha em desktop/celular; **não confundir** com `/mail/admin` | Configuração MinhaNota concluída; dashboard sofisticado adiado |
 | Adaptadores adicionais (SMS, WhatsApp, push, outros provedores) | Ideias futuras | Avaliar necessidade real, custos e compliance por canal |
 | Integrações com apps consumidoras | Piloto MinhaNota concluído: #3 (`797886c`), login Google e segundo login sem duplicação em dry-run; novo evento API → Hub → Resend → Gmail entregue em 06/11, uma tentativa e webhooks assinados | Dry-run restaurado e flag de teste Production desabilitada. Provas distintas: callback em dry-run e entrega real por evento próprio da API; não implica habilitação contínua de envios |
+| Eventos específicos dos seis projetos | [Propostas inativas](HUB-EVENT-CANDIDATES.md), com evidência de funcionalidades, variáveis, destinatários e templates; lacunas explícitas, inclusive identidade Ride4x4/Ride Experience não confirmada | Não cadastrar como operacionais nem criar emissores antes de confirmar funcionalidades e autorização; marketing continua bloqueado |
 
 Referências: [API](API.md), [Delivery](DELIVERY.md), [Operations](OPERATIONS.md). O diagrama por etapas no README é histórico, não prova de conclusão.
 
