@@ -15,8 +15,10 @@ autorizado para o UUID existente no tenant `todoku`. Painel e APIs validados com
 sessão por senha; o responsável também confirmou a organização na sessão Google existente.
 A aplicação `todoku/minhanota` foi configurada posteriormente em dry-run, com
 `minhanota.welcome@1`; Production do consumidor está READY em `797886c`.
-Reconferência atual: nenhuma tentativa/evento desse piloto, token Sensitive
-sem acesso local; validação HTTP API → Hub bloqueada e callback Google pendente.
+Validação posterior autorizada em 06/11: HTTP API → Hub comprovado em Production
+com persistência, replay, snapshot, cron dry-run, status e auditorias.
+Credencial temporária revogada e rejeitada por HTTP 401; token do consumidor
+e históricos preservados. Callback Google → MinhaNota → Hub segue pendente.
 [Inicialização e recuperação](HUB-INITIALIZATION.md) e
 [evidências do piloto](HUB-MINHANOTA-PILOT.md).
 

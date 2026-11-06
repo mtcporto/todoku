@@ -73,11 +73,19 @@ API → Todoku Hub sem depender de login e sem alterar históricos do consumidor
 Usar chave de idempotência exclusiva do teste, nunca a chave de boas-vindas por
 destinatário do MinhaNota. Essa prova não valida o callback Google.
 
-**Estado:** configuração e deployments reconferidos; nenhum evento do piloto
-persistido. O teste HTTP autenticado está bloqueado: o token existente é
-Sensitive na Vercel, não retornado na leitura autenticada, sem cópia local.
-Não criar outra credencial ou alterar a existente sem autorização adicional.
-Callback Google → MinhaNota → Hub permanece pendente, independentemente disso.
+**Estado inicial:** configuração e deployments reconferidos; teste HTTP
+bloqueado porque o token Sensitive existente não era recuperável nem tinha
+cópia local. Nenhuma credencial foi criada sem autorização adicional.
+
+**Estado posterior, autorizado em 06/11:** credencial temporária `events:write`
+restrita a `todoku/minhanota`, com validade de 15 minutos e token somente em
+memória. API → Hub **validado em Production** com evento
+`201f7b21-e24a-4f79-8fd2-b3ba80686c98`: 202, replay idêntico, snapshot
+`minhanota.welcome@1`, cron dry-run, status e auditorias. Credencial revogada
+após o teste; GET e replay passaram a retornar 401. Token Production,
+configuração, catálogo e históricos do consumidor permaneceram inalterados.
+Callback Google → MinhaNota → Hub permanece **pendente**, independentemente
+dessa prova. [Evidências](HUB-MINHANOTA-PILOT.md).
 
 **Consequências:** manter históricos, reservas e auditoria. Para callback, usar
 login legítimo de outra conta Google verificada, com consentimento e elegibilidade

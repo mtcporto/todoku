@@ -73,7 +73,7 @@ formato da resposta no cliente falhou depois da criação; consulta remota
 confirmou a variável Sensitive e seu target antes de prosseguir. Não foi criada
 segunda credencial nem repetida a criação da variável.
 
-## Reconferência operacional e validações distintas
+## Reconferência inicial e bloqueio histórico
 
 Em 06/11/2026, a continuação consultou as duas branches locais e a `main` no
 GitHub, metadados autenticados da Vercel, health HTTP e os dois bancos, somente
@@ -95,7 +95,7 @@ em leitura. Nenhuma configuração foi repetida:
 - Duas linhas em `emails_boas_vindas`, zero em `emails_boas_vindas_hub`;
   zero eventos em `todoku/minhanota`. Nenhuma reserva ou histórico alterado.
 
-| Trecho | Estado desta continuação | Evidência necessária |
+| Trecho | Estado na reconferência inicial, antes da autorização adicional | Evidência necessária |
 | --- | --- | --- |
 | API → Todoku Hub | **Bloqueado; não validado** | HTTP autenticado 202, snapshot, processamento dry-run, status, auditoria e replay |
 | Login Google → MinhaNota → Todoku Hub | **Pendente; não validado** | Login legítimo e reserva/recibo do consumidor correlacionados ao evento do Hub |
@@ -113,7 +113,65 @@ foi gerado, rotacionado ou exposto. O responsável estava indisponível para
 fornecer acesso privado à credencial ou autorizar alternativa. Não foi feito
 POST de ingestão; health e consultas SQL não substituem essa prova.
 
-### Retomada do teste HTTP controlado
+## Validação API → Hub concluída em Production
+
+Após o bloqueio acima, o responsável autorizou explicitamente credencial
+temporária `events:write` restrita a `todoku/minhanota`, destinatário próprio
+exclusivamente dry-run e revogação após o teste. A execução de 06/11/2026
+ocorreu entre **19:18:38Z e 19:20:58Z**; não reutilizou nem alterou a
+credencial Production do MinhaNota.
+
+| Evidência | Resultado |
+| --- | --- |
+| Origem / contrato | HTTP real `https://todoku.com.br/api/v1/events`, `user.welcome`, transactional, `data.firstName=Teste` |
+| Evento persistido | `201f7b21-e24a-4f79-8fd2-b3ba80686c98` |
+| ID de origem | `18ff5c00-0ce6-4bd1-8c08-72ab4bf3554e` |
+| Idempotency key exclusiva | `minhanota-api-validation-1cf7c2a7-64f2-4bb2-b37b-686a04541bd0` |
+| Aceite | HTTP 202, `status=accepted`, `replay=false` |
+| Replay idêntico | HTTP 202, mesmo eventId, `replay=true`; uma outbox e uma auditoria de aceite |
+| Isolamento da credencial | Payload com outro tenant rejeitado por HTTP 403 `scope_mismatch`, sem criar evento |
+| Persistência | Payload canônico e SHA-256 iguais ao request; evento, outbox e snapshot correlacionados |
+| Snapshot | `minhanota.welcome@1`, configuração `0abab748-94c0-4aa8-b408-cb3ac71e4be6`, modo `dry_run`; destinatário autorizado, remetente, assunto e conteúdo renderizado conferidos |
+| Outbox | `8827e29b-50da-4a75-94f6-2dd3ae77a41f` |
+| Processamento | Cron agendado de Production, sem invocação local/manual do worker |
+| Tentativa | Uma, `provider=dry_run`, `status=succeeded`, de `19:20:43.366Z` a `19:20:43.597Z` |
+| GET de status | HTTP 200; `queueStatus=cancelled`, `deliveryState=dry_run`, `mode=dry_run`, `attempts=1`, `error=null`, `providerMessageId=null` |
+| Auditoria de ingestão | Uma ação `event.accepted`, vinculada à credencial temporária |
+| Auditoria de processamento | `claimed` em `19:20:43.455Z`; `dry_run` em `19:20:43.683Z` |
+| Entrega externa | Nenhum ID de provedor; `budget_reserved=0`; configuração sem chave Resend/webhook e `send_count=0` |
+
+### Expiração, revogação e preservação
+
+- Credencial temporária: `50b73e16-dada-4a1a-ad38-8b03d3f2b64b`,
+  somente `events:write` no escopo autorizado; expiração prevista
+  `2026-11-06T19:33:38.436Z` (15 minutos).
+- Criada com o guard administrativo existente, revalidado na transação;
+  auditoria `credential.created` em `19:18:43.388Z`.
+- **Revogada em `2026-11-06T19:20:56.581Z`**, com auditoria
+  `credential.revoked` em `19:20:56.708Z`. GET de status e POST do payload
+  idêntico após revogação retornaram **401 `unauthorized`**.
+- Token gerado apenas em memória; somente hash no banco. Nenhum token
+  Production ou variável Vercel alterado; demais credenciais comparadas
+  integralmente antes/depois, sem diferenças. Sessão administrativa
+  temporária encerrada.
+- Configuração de provedor, templates e bindings comparados integralmente
+  antes/depois, sem diferenças. Duas boas-vindas legadas e zero reservas Hub
+  do MinhaNota mantidas, com contagens e digests iguais. Nenhum histórico
+  apagado ou atualizado para produzir esse evento.
+- Relatório privado sem token/payload pessoal:
+  `.vercel/minhanota-pilot-20261106/api-validation-20261106.private.json`.
+  As referências acima permitem conferir o resultado diretamente no banco.
+
+| Trecho | Estado final |
+| --- | --- |
+| **API → Todoku Hub** | **Validado em Production, exclusivamente dry-run** |
+| **Login Google → MinhaNota → Todoku Hub** | **Pendente; não validado por este teste** |
+
+Não houve alteração de backend, nova implementação de envio, migração,
+DNS/Resend ou liberação de envio real. A fila `cancelled` é o estado terminal
+esperado da simulação, não erro nem confirmação de entrega externa.
+
+### Procedimento de referência para novos testes autorizados
 
 1. Disponibilizar a credencial existente somente em memória/arquivo privado
    fora do Git, nunca no chat/log. Confirmar o destinatário autorizado.
