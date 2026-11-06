@@ -2,16 +2,16 @@
 
 O **Todoku** é uma plataforma centralizada de orquestração de comunicações projetada para atender a múltiplas aplicações a partir de uma arquitetura unificada.
 
-Seu principal objetivo é evitar a redundância de implementação em cada serviço consumidor, abstraindo o envio de mensagens, gerenciamento de templates, aplicação de políticas, agendamento, rastreamento de entrega e auditoria.
+Seu principal objetivo é evitar a redundância de implementação em cada serviço consumidor, abstraindo o envio de mensagens, gerenciamento de templates, aplicação de políticas, filas, rastreamento de entrega e auditoria. O agendamento futuro solicitado pela aplicação consumidora ainda está no roadmap.
 
 ---
 
 > [!NOTE]
-> **Status atual do projeto:** Next.js 16, React 19, TypeScript 6 e Node 24, com ingestão durável no Turso, templates versionados, BYOK criptografado, worker autenticado e webhooks assinados do Resend. **O processamento padrão é dry-run, sem envio externo; marketing está desabilitado.** Testes reais exigem configuração por tenant/aplicação, domínio verificado, destinatário autorizado, orçamento de envio e liberação explícita no servidor. Consulte [docs/API.md](docs/API.md), [docs/DELIVERY.md](docs/DELIVERY.md) e [docs/OPERATIONS.md](docs/OPERATIONS.md). Preferências avançadas e painel continuam no roadmap.
+> **Status atual do projeto:** Next.js 16, React 19, TypeScript 6 e Node 24, com ingestão durável no Turso, templates versionados, BYOK criptografado, worker autenticado e webhooks assinados do Resend. **Notifications (Hub) permanece dry-run por padrão e marketing está desabilitado; isso não bloqueia o Sending já habilitado e controlado do Todoku Mail para a identidade `contato`.** O Hub requer configuração por tenant/aplicação, domínio verificado, destinatário autorizado e liberação explícita no servidor antes de envio real. Os limites e controles do Mail são independentes dos do Hub. Consulte [docs/API.md](docs/API.md), [docs/DELIVERY.md](docs/DELIVERY.md) e [docs/OPERATIONS.md](docs/OPERATIONS.md). Preferências avançadas e painel continuam no roadmap.
 
 ---
 
-**Todoku Mail — MVP 1:** webmail em `/mail`, com login real, grants por identidade, caixa unificada, filtros, leitura segura, threads e anexos autenticados. O piloto está **pausado**, sem alteração de DNS ou recebimento externo. R2 privado testado com PUT/GET/DELETE reais, chave restrita ao bucket e configuração de servidor Vercel pronta. Domínio/webhook Resend preparados; Receiving aguarda autorização explícita. Veja [docs/MAIL.md](docs/MAIL.md) e [preparação do piloto](docs/MAIL-ACTIVATION.md).
+**Todoku Mail:** módulo de webmail em `/mail`, com Receiving validado, composição/envio controlado, administração, usuários, perfil e sessões. MVP 3 entregas 1–4 e 7 publicadas; entregas 5–6 (orçamentos/consumo) adiadas. O painel `/mail/admin` não é o painel do Communication Hub. Veja [roadmap consolidado](docs/ROADMAP.md), [decisões](docs/DECISIONS.md) e [documentação Mail](docs/MAIL.md).
 
 ## 1. Fluxo Conceitual
 
@@ -38,7 +38,7 @@ $$\text{Aplicação} \longrightarrow \text{Evento} \longrightarrow \text{Todoku}
 - **API para integração com aplicações consumidoras:** Endpoints padronizados para ingestão de eventos síncronos e assíncronos.
 - **Templates versionados e reutilizáveis:** Catálogo centralizado de templates com versionamento semântico, pré-visualização e injeção dinâmica de variáveis.
 - **Políticas de envio e preferências dos destinatários:** Gestão de opt-out/cancelamento de inscrição, limites de taxa (*rate limiting*), janelas de entrega e controle de frequência (*anti-fatigue*).
-- **Agendamento, filas e processamento assíncrono:** Capacidade de agendar mensagens para datas futuras e processar grandes volumes com garantias de resiliência.
+- **Filas e processamento assíncrono (implementados); agendamento futuro solicitado via API (planejado):** O Hub dispõe de cron, filas e reagendamento de tentativas. O contrato atual de ingestão ainda não aceita solicitar uma data futura de envio; essa capacidade exige implementação e validação específicas.
 - **Idempotência e deduplicação de eventos:** Chaves de idempotência para garantir que falhas transitórias de rede ou reenvios da aplicação não resultem em mensagens duplicadas para o destinatário.
 - **Histórico e auditoria:** Registro imutável de todas as mensagens processadas, payloads de evento, tentativas de envio e metadados de entrega.
 - **Webhooks de eventos:** Ingestão de webhooks dos provedores para registrar eventos do ciclo de vida da mensagem (envio, entrega, abertura, clique, rejeição e reclamação de spam).
@@ -55,7 +55,9 @@ A pilha tecnológica do Todoku é composta por:
 - **Persistência:** [Turso](https://turso.tech/) (libSQL / SQLite distribuído no Edge) para armazenamento de configurações, tenants, templates e logs de auditoria.
 - **Entrega de E-mails:** Resend API.
 
-### Evolução Incremental (Roadmap)
+### Evolução Incremental (visão histórica)
+
+Para prioridades e estados atuais, consultar [docs/ROADMAP.md](docs/ROADMAP.md) e [docs/DECISIONS.md](docs/DECISIONS.md). O diagrama abaixo representa a direção original, não um checklist de entregas concluídas.
 
 ```mermaid
 flowchart TD
@@ -70,10 +72,10 @@ flowchart TD
 3. **Etapa 3:** Camada multi-tenant com suporte completo ao modelo Bring Your Own Key (BYOK).
 4. **Etapa 4:** Motor de templates versionados, ingestão de webhooks, deduplicação e trilha de auditoria.
 
-**Trilha Mail:** Receiving do piloto validado em produção. MVP 2 adiciona composição, respostas, rascunhos e lixeira; envio externo segue bloqueado até autorização específica. Detalhes em [docs/MAIL.md](docs/MAIL.md) e [plano de Sending](docs/MAIL-OUTBOUND.md).
+**Trilha Mail — estado atual:** Receiving validado em produção; composição, respostas, rascunhos e lixeira implementados. O Sending está habilitado de forma controlada para `contato`, inclusive para destinatários externos autorizados pela política vigente, com limite de **20 mensagens por janela móvel de 24 horas** por identidade. Isso **não** habilita envios gerais do Hub/Notifications. Consulte [docs/MAIL.md](docs/MAIL.md), [operação de Sending](docs/MAIL-OUTBOUND.md) e [política vigente](docs/MAIL-SENDING-POLICY.md).
 
-**MVP 3:** autorização, APIs administrativas, convites/sessões e painel (#23–#26) publicados. A [entrega7 — perfil e navegação](docs/MAIL-PROFILE-NAVIGATION.md), issue #28, está em implementação/revisão antes das quotas agregadas (5–6); manter20 mensagens/24h. Estados antigos do piloto acima são históricos; consulte a documentação específica do Mail.
-5. **Etapa 5:** Painel administrativo para acompanhamento operacional, métricas de envio e configuração de tenants.
+**MVP 3 do Mail:** entregas 1–4 e 7 publicadas (#23–#26, #29); 5–6 adiadas. Limite vigente: 20 mensagens/24h por identidade. Estados anteriores do piloto são históricos.
+5. **Etapa 5 do Hub (planejada):** Painel administrativo do Communication Hub para métricas, políticas e tenants; distinto de `/mail/admin`.
 
 ---
 
@@ -94,4 +96,4 @@ O Todoku foi planejado para atender como hub de comunicação do ecossistema de 
 
 - **Domínio oficial:** `todoku.com.br`
 - **DNS:** Gerenciado via Cloudflare.
-- **Segurança de E-mail:** MX Receiving e DKIM do Resend verificados no piloto; SPF defensivo e DMARC preservados. Sending requer aprovação e revisão dos registros outbound exatos. Histórico em [docs/MAIL-ACTIVATION.md](docs/MAIL-ACTIVATION.md).
+- **Segurança de E-mail:** MX Receiving e DKIM do Resend verificados no piloto; SPF defensivo e DMARC preservados. Os registros outbound necessários ao Sending controlado de `contato` já foram tratados no rollout; novas alterações de DNS, domínios ou identidades exigem revisão e autorização específicas. Histórico em [docs/MAIL-ACTIVATION.md](docs/MAIL-ACTIVATION.md) e estado vigente em [docs/MAIL-SENDING-POLICY.md](docs/MAIL-SENDING-POLICY.md).
