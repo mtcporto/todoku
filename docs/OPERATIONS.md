@@ -13,8 +13,12 @@ preparação não acionou worker nem enviou mensagens. Setup e acesso privado:
 O Hub publicado em `2648f5e` recebeu exclusivamente a migração 0009 e o bootstrap
 autorizado para o UUID existente no tenant `todoku`. Painel e APIs validados com
 sessão por senha; o responsável também confirmou a organização na sessão Google existente.
-Catálogo dessa organização vazio, MinhaNota ainda não configurado.
-[Evidências, backup restaurado localmente e recuperação](HUB-INITIALIZATION.md).
+A aplicação `todoku/minhanota` foi configurada posteriormente em dry-run, com
+`minhanota.welcome@1`; Production do consumidor está READY em `797886c`.
+Reconferência atual: nenhuma tentativa/evento desse piloto, token Sensitive
+sem acesso local; validação HTTP API → Hub bloqueada e callback Google pendente.
+[Inicialização e recuperação](HUB-INITIALIZATION.md) e
+[evidências do piloto](HUB-MINHANOTA-PILOT.md).
 
 ## Infraestrutura e histórico de preparação
 

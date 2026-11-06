@@ -1,6 +1,6 @@
 # Roadmap — Todoku e Todoku Mail
 
-> Fonte de verdade versionada para prioridades e pendências. Atualizado em 06/11/2026, após PR #32 (`2648f5e`) e preparação autorizada da 0009. Este documento descreve o estado **conhecido**, não substitui testes, auditorias operacionais ou evidência de produção. Alterações de escopo devem atualizar este arquivo na mesma PR.
+> Fonte de verdade versionada para prioridades e pendências. Atualizado em 06/11/2026, após PR #33 (`bfc7de7`), MinhaNota #3 (`797886c`) e reconferência operacional do piloto. Este documento descreve o estado **conhecido**, não substitui testes, auditorias operacionais ou evidência de produção. Alterações de escopo devem atualizar este arquivo na mesma PR.
 
 ## Produtos e fronteiras
 
@@ -18,10 +18,10 @@
 | Filas, cron e reagendamento de tentativas | **Implementados** como infraestrutura de processamento/retry | Auditar execução e observabilidade com evidências; não presumir dashboard pronto |
 | Agendamento futuro solicitado pela aplicação consumidora | **Planejado; não suportado pelo contrato atual de ingestão** | Definir campo/semântica da data futura, validação, políticas, persistência e testes antes de oferecer a capacidade |
 | Preferências de destinatário, anti-fatigue e opt-out | Evolução planejada | Definir contrato e persistência antes da UI |
-| MVP funcional do Hub | Backend #31 e painel #32 publicados; 0009, bootstrap e acesso administrativo validados por senha e sessão Google existente; piloto MinhaNota somente local em dry-run | [Evidências operacionais](HUB-INITIALIZATION.md); tenant `todoku` sem aplicações; próxima etapa é configurar MinhaNota em dry-run mediante autorização própria |
-| Painel de administração do Hub | Interface mínima `/hub` publicada e validada por senha em desktop/celular; **não confundir** com `/mail/admin` | Configuração MinhaNota ainda pendente; dashboard sofisticado adiado |
+| MVP funcional do Hub | Backend #31 e painel #32 publicados; 0009, bootstrap e acesso administrativo validados; `todoku/minhanota` configurada em Production dry-run | [Inicialização](HUB-INITIALIZATION.md) e [piloto](HUB-MINHANOTA-PILOT.md); teste HTTP API → Hub bloqueado por falta de acesso ao token existente; callback Google permanece pendente |
+| Painel de administração do Hub | Interface mínima `/hub` publicada e validada por senha em desktop/celular; **não confundir** com `/mail/admin` | Configuração MinhaNota concluída; dashboard sofisticado adiado |
 | Adaptadores adicionais (SMS, WhatsApp, push, outros provedores) | Ideias futuras | Avaliar necessidade real, custos e compliance por canal |
-| Integrações com apps consumidoras | Piloto escolhido: boas-vindas do MinhaNota | Reutilizar o fluxo existente, substituir Resend direto e validar ingestão → template → worker → status em dry-run |
+| Integrações com apps consumidoras | Boas-vindas do MinhaNota publicadas na #3 (`797886c`), opt-in Production ativo; Resend direto substituído; smoke local aprovado | Validar HTTP API → Hub com credencial acessível e destinatário autorizado, sem alterar históricos; depois validar separadamente login Google → MinhaNota → Hub |
 
 Referências: [API](API.md), [Delivery](DELIVERY.md), [Operations](OPERATIONS.md). O diagrama por etapas no README é histórico, não prova de conclusão.
 

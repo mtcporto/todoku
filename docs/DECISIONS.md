@@ -61,8 +61,28 @@ ou migração remota.
 **Estado posterior (06/11):** PRs #31/#32 integradas. Mediante ponto de controle
 e autorização explícita separados, 0009 aplicada e bootstrap restrito ao UUID
 interno aprovado no tenant `todoku`, com auditoria. Painel/APIs conferidos por
-senha; o responsável confirmou a organização na sessão Google existente. MinhaNota ainda não
-configurado, sem envio real. [Evidências e recuperação](HUB-INITIALIZATION.md).
+senha; o responsável confirmou a organização na sessão Google existente.
+Posteriormente, `todoku/minhanota` foi configurada em dry-run e a PR #3 do
+consumidor publicada em `797886c`, sem envio real.
+[Inicialização](HUB-INITIALIZATION.md) e [piloto](HUB-MINHANOTA-PILOT.md).
+
+## D-008 — Provas distintas do piloto MinhaNota (06/11/2026)
+
+**Decisão:** um evento controlado `user.welcome` pela API publicada pode validar
+API → Todoku Hub sem depender de login e sem alterar históricos do consumidor.
+Usar chave de idempotência exclusiva do teste, nunca a chave de boas-vindas por
+destinatário do MinhaNota. Essa prova não valida o callback Google.
+
+**Estado:** configuração e deployments reconferidos; nenhum evento do piloto
+persistido. O teste HTTP autenticado está bloqueado: o token existente é
+Sensitive na Vercel, não retornado na leitura autenticada, sem cópia local.
+Não criar outra credencial ou alterar a existente sem autorização adicional.
+Callback Google → MinhaNota → Hub permanece pendente, independentemente disso.
+
+**Consequências:** manter históricos, reservas e auditoria. Para callback, usar
+login legítimo de outra conta Google verificada, com consentimento e elegibilidade
+conferida, sem vínculos fiscais ou grants. Não fabricar callback, criar endpoint
+de envio ou liberar Resend para contornar o bloqueio.
 
 ## Histórico e referências
 

@@ -19,9 +19,14 @@ O [MVP funcional do Hub](docs/HUB-MVP.md) tem backend e catálogo por aplicaçã
 integrados na #31. O painel mínimo `/hub` foi integrado na #32 (`2648f5e`).
 A migração 0009 e o bootstrap administrativo autorizado foram aplicados e
 validados; acesso por senha, APIs e painel em desktop/celular conferidos em
-Production. O responsável confirmou a organização na sessão Google existente. O tenant
-`todoku` ainda não tem aplicações; o piloto MinhaNota foi validado somente
-localmente em dry-run. [Evidências operacionais](docs/HUB-INITIALIZATION.md).
+Production. O responsável confirmou a organização na sessão Google existente.
+A aplicação `todoku/minhanota` está configurada em Production, exclusivamente
+dry-run, com `minhanota.welcome@1`. A configuração foi reconferida em 06/11;
+o teste HTTP autenticado API → Hub está bloqueado pela indisponibilidade do
+token Sensitive fora do runtime do MinhaNota. O callback Google → MinhaNota
+→ Hub permanece pendente, separadamente.
+[Inicialização](docs/HUB-INITIALIZATION.md) e
+[estado do piloto](docs/HUB-MINHANOTA-PILOT.md).
 Nenhum envio real foi autorizado por essa inicialização.
 
 A arquitetura do Todoku baseia-se na separação entre a geração do evento pela aplicação de origem e a execução da entrega ao destinatário:
