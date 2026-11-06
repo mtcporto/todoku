@@ -54,8 +54,15 @@ reutiliza sessões existentes, mas administração depende de grant próprio do 
 por UUID/tenant, sem herdar papéis ou conteúdo do Mail. Novas aplicações começam
 dry-run; envio real exige autorização específica. SSO, marketing, agendamento
 avançado, painel sofisticado, outros provedores e onboarding universal ficam
-adiados. Ver [diagnóstico e plano](HUB-MVP.md). Implementação em revisão, sem
-autorização de merge ou migração remota derivada desta decisão.
+adiados. Ver [diagnóstico e plano](HUB-MVP.md). Na preparação original, a
+implementação estava em revisão; esta decisão, por si só, não autorizava merge
+ou migração remota.
+
+**Estado posterior (06/11):** PRs #31/#32 integradas. Mediante ponto de controle
+e autorização explícita separados, 0009 aplicada e bootstrap restrito ao UUID
+interno aprovado no tenant `todoku`, com auditoria. Painel/APIs conferidos por
+senha; o responsável confirmou a organização na sessão Google existente. MinhaNota ainda não
+configurado, sem envio real. [Evidências e recuperação](HUB-INITIALIZATION.md).
 
 ## Histórico e referências
 
