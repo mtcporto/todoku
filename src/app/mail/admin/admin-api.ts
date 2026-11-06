@@ -38,6 +38,7 @@ export type Invitation = {
 };
 export type Session = {
   user: { id: string; username: string };
+  session?: { method: string };
   administration: {
     canAdminister: boolean;
     scopes: { tenantId: string; scope: string }[];

@@ -27,6 +27,7 @@ import {
 import ConfirmAction from "./confirm-action";
 import GrantEditor from "./grant-editor";
 import InvitationForm from "./invitation-form";
+import AccountMenu from "../account-menu";
 
 type Catalogs = {
   domains: Page<Domain>;
@@ -99,9 +100,18 @@ export default function AdminPanel() {
           <span className="brand-mark">t</span>todoku
           <span className="brand-sub">Communication Hub</span>
         </a>
-        <a className="secondary-button" href="/mail">
-          Voltar ao Mail
-        </a>
+        <div className="profile-navigation">
+          <a className="secondary-button" href="/mail">
+            Voltar ao Mail
+          </a>
+          {gate ? (
+            <AccountMenu
+              username={gate.session.user.username}
+              method={gate.session.session?.method}
+              canAdminister={gate.session.administration.canAdminister}
+            />
+          ) : null}
+        </div>
       </header>
       <div className="admin-heading">
         <span className="eyebrow">TODOKU MAIL</span>

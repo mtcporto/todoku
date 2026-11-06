@@ -115,14 +115,14 @@ try {
       await page.getByRole("button", { name: "← Voltar" }).click();
     }
     await page
-      .getByLabel("Identidade", { exact: true })
+      .getByLabel("Caixa postal", { exact: true })
       .selectOption({ label: events[3].to[0] });
     await page.getByText("1 mensagem", { exact: true }).waitFor();
     await page.screenshot({
       path: `.vercel/mail-screenshots/${name}-inbox.png`,
       fullPage: true,
     });
-    await page.getByLabel("Identidade", { exact: true }).selectOption("");
+    await page.getByLabel("Caixa postal", { exact: true }).selectOption("");
     await page.getByText("4 mensagens", { exact: true }).waitFor();
     await page
       .locator(".message-row")
