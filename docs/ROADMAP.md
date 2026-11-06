@@ -25,6 +25,29 @@
 
 Referências: [API](API.md), [Delivery](DELIVERY.md), [Operations](OPERATIONS.md). O diagrama por etapas no README é histórico, não prova de conclusão.
 
+
+## Ideias registradas para depois do piloto — Todoku Client e Todoku Connect
+
+> **Conceitos futuros, não autorizados para implementação nesta etapa.** Não interromper a validação do piloto MinhaNota → Hub nem alterar infraestrutura, DNS, credenciais ou provedores. Revisitar após comprovar a integração ponta a ponta e identificar repetição real na segunda aplicação (por exemplo, Selo).
+
+### Todoku Client — o “garçom” das aplicações
+
+**Problema:** mesmo centralizando o envio no Hub, cada aplicação ainda precisa repetir código de HTTP, autenticação, serialização, timeout, tratamento de erros e idempotência para emitir eventos.
+
+**Proposta:** biblioteca/SDK pequeno e reutilizável, inicialmente Node.js/TypeScript, para enviar eventos de negócio ao Hub com contrato tipado, autenticação por aplicação, idempotência, erros e timeouts consistentes. A aplicação continua detectando o evento e produzindo seus dados; o Client apenas entrega o pedido; o Hub resolve templates, políticas, filas, entrega e auditoria. Não criar microsserviço intermediário, motor de workflows ou lógica de negócio específica no SDK. Extrair de integração existente e validar reutilização em uma segunda aplicação antes de expandir.
+
+**Critério conceitual:** nova aplicação deve precisar somente instalar/configurar o Client e emitir eventos, sem integrar Resend diretamente nem reconstruir transporte.
+
+### Todoku Connect — configuração guiada e provisionamento
+
+**Problema:** ativar domínio/remetente exige registros DNS e autenticação de e-mail que são difíceis para usuários comuns; a experiência desejada é semelhante à integração Vercel ↔ Cloudflare, com autorização e configuração automática quando suportada.
+
+**Proposta:** capacidade administrativa do próprio Hub para conectar aplicações, domínios e provedores; descobrir requisitos reais de envio/recebimento; apresentar alterações DNS propostas; solicitar autorização explícita e, por APIs oficiais/OAuth/permissões restritas, aplicar somente registros necessários, verificar propagação e status. Começar futuramente pela stack Cloudflare + Resend existente, sem presumir que MX, SPF, DKIM e DMARC sejam sempre iguais ou que registros existentes possam ser sobrescritos. Oferecer caminho manual quando automação não estiver disponível. Distinguir infraestrutura gerenciada pelo Todoku de credenciais/provedores do cliente (BYOK), com isolamento e auditoria.
+
+**Fronteira:** integração com Vercel é conveniência para variáveis de ambiente/deploy, não requisito para enviar eventos HTTP. Não construir plataforma genérica de gerenciamento de cloud, DNS ou hospedagem. Outros provedores DNS/e-mail e outras stacks ficam para evolução posterior.
+
+**Ordem de prioridade:** concluir piloto MinhaNota → Hub em dry-run; depois avaliar Client com segundo consumidor; somente então planejar Connect. Estas ideias não criam novas entregas no MVP atual.
+
 ## Todoku Mail
 
 | Etapa | Situação em 06/11/2026 | Referência |
