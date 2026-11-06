@@ -14,8 +14,10 @@ ativação individual, operação visual do Hub e consumidor real. Sequência de
 2. Interface mínima `/hub`, separada de `/mail/admin`.
 3. Boas-vindas do MinhaNota consumindo a API; validação integrada em dry-run.
 
-Essas entregas estão **em revisão**, não publicadas. A documentação canônica
-depende da PR #30, usada como base das PRs do Hub, sem merge automático.
+Essas entregas estão **em revisão**, não publicadas. A documentação canônica da
+PR #30 já foi integrada à `main` por squash em `992590fa`. A branch da PR #31
+foi sincronizada com essa base, preservando as adições do Hub e sem merge das
+PRs de implementação.
 
 ## Configuração e compatibilidade
 
