@@ -84,8 +84,9 @@ memória. API → Hub **validado em Production** com evento
 `minhanota.welcome@1`, cron dry-run, status e auditorias. Credencial revogada
 após o teste; GET e replay passaram a retornar 401. Token Production,
 configuração, catálogo e históricos do consumidor permaneceram inalterados.
-Callback Google → MinhaNota → Hub permanece **pendente**, independentemente
-dessa prova. [Evidências](HUB-MINHANOTA-PILOT.md).
+Naquela etapa, callback Google → MinhaNota → Hub permaneceu **pendente**,
+independentemente dessa prova. Posteriormente foi validado separadamente na
+D-009. [Evidências](HUB-MINHANOTA-PILOT.md).
 
 **Consequências:** manter históricos, reservas e auditoria. Para callback, usar
 login legítimo de outra conta Google verificada, com consentimento e elegibilidade
@@ -105,18 +106,26 @@ exato e instante original, em `2026-11-06T21:49:05.604Z`. Não havia reserva
 consumidor no Hub. Demais boas-vindas preservadas; nenhuma tabela fiscal
 alterada. Estado anterior e resultado guardados em relatório privado.
 
-**Limite de evidência:** login Google real iniciado e parado na senha/2FA;
-titular indisponível para concluir. Zero reservas da conta na conferência
-posterior. Callback e duplicação por segundo login continuam pendentes.
-Não substituir essa prova por sessão fabricada ou chamada direta.
+**Evidência posterior:** o titular concluiu o login Google real enquanto a
+verificação prosseguia. Sessão do navegador `GOOGLE_OAUTH` confirmada para a
+conta autorizada; reserva e aceite do consumidor às `21:49:57.924Z`,
+evento `1e276d31-326b-4e50-886d-2c9c452a46e2` aceito com a credencial
+Production do MinhaNota. Snapshot, template, cron dry-run e auditorias
+conferidos. Logout e segundo login Google reais produziram nova sessão,
+mantendo reserva/recibo/payload e somente um evento/outbox/tentativa.
+**Google → MinhaNota → Todoku validado em Production dry-run**, sem sessão
+fabricada ou chamada direta substituindo o callback.
 
 **Envio real:** controles existentes permitem configuração de teste por
 aplicação, destinatário único e orçamento de uma mensagem, com worker manual
 por `configurationId`. Não há seletor de evento nesse endpoint; somente
 `user.welcome` está habilitado no catálogo. A flag global de teste é exigida
 pelo POST, mas não altera o cron dry-run. Nenhuma configuração real está
-ativa. Não habilitar flag, credencial de transporte ou envio antes de
-comprovar callback dry-run e obter confirmação do escopo exato. Um novo
+ativa. Callback dry-run agora comprovado; escopo exato de uma mensagem real
+apresentado, mas sem confirmação adicional do titular indisponível. A
+consulta a domínios Resend com chave legada retornou 401; transporte não
+validado e nenhuma alteração realizada. Não habilitar flag, credencial
+de transporte ou envio antes da confirmação e verificação. Um novo
 evento de teste real terá chave própria; não converter o snapshot dry-run
 nem apagar sua reserva para reutilizar a mesma chave determinística.
 

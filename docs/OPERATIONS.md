@@ -18,11 +18,15 @@ A aplicação `todoku/minhanota` foi configurada posteriormente em dry-run, com
 Validação posterior autorizada em 06/11: HTTP API → Hub comprovado em Production
 com persistência, replay, snapshot, cron dry-run, status e auditorias.
 Credencial temporária revogada e rejeitada por HTTP 401; token do consumidor
-e históricos preservados. Callback Google → MinhaNota → Hub segue pendente.
+e históricos preservados nessa etapa.
 Na continuação autorizada às 18h47 de 06/11, somente uma boas-vindas legada
 de teste do responsável foi removida para permitir o login real; não havia
-reserva Hub dessa conta. Login iniciado, aguardando senha/2FA do titular.
-Nenhum envio real preparado ou habilitado. Ver D-009 e o relatório do piloto.
+reserva Hub dessa conta. Posteriormente, login Google real e segundo login
+foram concluídos: reserva/recibo e evento
+`1e276d31-326b-4e50-886d-2c9c452a46e2` correlacionados ao Hub, template e
+cron dry-run conferidos, sem duplicação. Escopo de envio real apresentado,
+sem confirmação adicional; transporte Resend ainda não validado e nenhum
+envio habilitado. Ver D-009 e o relatório do piloto.
 [Inicialização e recuperação](HUB-INITIALIZATION.md) e
 [evidências do piloto](HUB-MINHANOTA-PILOT.md).
 

@@ -162,7 +162,7 @@ credencial Production do MinhaNota.
   `.vercel/minhanota-pilot-20261106/api-validation-20261106.private.json`.
   As referências acima permitem conferir o resultado diretamente no banco.
 
-| Trecho | Estado final |
+| Trecho | Estado após o teste direto API, antes do login Google |
 | --- | --- |
 | **API → Todoku Hub** | **Validado em Production, exclusivamente dry-run** |
 | **Login Google → MinhaNota → Todoku Hub** | **Pendente; não validado por este teste** |
@@ -215,7 +215,7 @@ Não substituir a prova do callback por chamada local do consumidor ou evento
 controlado diretamente no Hub. O teste direto pode comprovar somente API → Hub.
 O teste local de perda do recibo continua evidência separada.
 
-## Continuação: conta do responsável preparada para login Google
+## Continuação: Google → MinhaNota → Hub validado em dry-run
 
 Em 06/11/2026, às 18h47 (UTC−03), o responsável autorizou explicitamente
 usar apenas sua conta Google e remover/reinicializar somente as boas-vindas
@@ -226,8 +226,9 @@ Reconferidos os dois repositórios e deployments Production: mesmos commits
 `bfc7de7`/`797886c`, READY. O callback publicado chama o módulo Todoku;
 esse fluxo não contém envio direto/fallback Resend. Credencial Production
 ativa, variáveis corretas, `user.welcome` como único binding habilitado e
-`minhanota.welcome@1` presente. O valor Sensitive não foi extraído: seu uso
-efetivo pelo consumidor ainda depende da prova do callback.
+`minhanota.welcome@1` presente. O valor Sensitive não foi extraído; o uso
+efetivo dessa credencial pelo consumidor foi confirmado pela auditoria do
+evento de callback, como descrito abaixo.
 
 ### Preparação executada
 
@@ -241,26 +242,52 @@ efetivo pelo consumidor ainda depende da prova do callback.
   idempotência e o evento API anterior permanecem intactos.
 - Relatório privado com estado anterior:
   `.vercel/minhanota-pilot-20261106/google-test-reset-20261106.private.json`.
-- Conta permanece preparada; não restaurar a supressão antes do teste.
+- Preparação concluída; após o login, a reserva Hub foi criada pelo próprio
+  consumidor e deve permanecer para suprimir duplicações.
 
-### Login real: intervenção do titular necessária
+### Login Google real e segundo login sem duplicação
 
 Aberto `https://minhanota.app`, acionado **Entrar com Google** e selecionada
-exclusivamente a conta autorizada. O Google exigiu senha; o responsável
-estava indisponível para completar senha/2FA. Não foram solicitados segredos
-por chat nem fabricados código OAuth, token ou sessão.
+exclusivamente a conta autorizada. O Google inicialmente exigiu senha; foi
+solicitada intervenção pessoal, sem receber segredos pelo chat. Durante as
+verificações seguintes, o titular concluiu o login no navegador.
 
-Na conferência posterior: zero linhas legadas e zero reservas Hub da conta.
-Portanto **callback Google → MinhaNota → Todoku continua pendente**,
-assim como o teste de segundo login sem duplicação. A validação API → Hub
-anterior continua válida, mas não substitui essa etapa.
+| Evidência do callback em Production | Resultado |
+| --- | --- |
+| Sessão real no navegador | HTTP 200 em `/api/auth/sessao`, autenticada, conta autorizada, método `GOOGLE_OAUTH`, `iat=1794001796` |
+| Reserva durável do consumidor | Uma linha Hub; payload original e `event_id`/`aceito_em` presentes |
+| Aceite registrado pelo MinhaNota | `2026-11-06T21:49:57.924Z` |
+| Evento Hub | `1e276d31-326b-4e50-886d-2c9c452a46e2` |
+| ID de origem | `5c68b98a-d69a-4bb1-8d30-aaf536405b97` |
+| Outbox | `830e2a0c-55fc-4847-850c-cc711e12df80` |
+| Correlação | Payload canônico e SHA-256 iguais ao payload reservado; mesma chave determinística e mesmo `event_id` |
+| Credencial usada no aceite | Credencial Production original `53325eda-ca9c-48ea-8831-ce2519b62e6f`, não a temporária do teste API |
+| Template/snapshot | `minhanota.welcome@1`; destinatário autorizado, remetente, assunto e texto renderizado conferidos |
+| Processamento | Cron Production; uma tentativa `provider=dry_run`, `status=succeeded`, de `21:50:43.411Z` a `21:50:43.687Z` |
+| Estado final persistido | Fila `cancelled`, entrega `dry_run`, uma tentativa, orçamento reservado zero, sem ID de provedor/erro |
+| Auditoria de ingestão | Uma ação `event.accepted` em `21:49:57.851Z`, vinculada à credencial Production |
+| Auditoria de processamento | `claimed` em `21:50:43.514Z`; `dry_run` em `21:50:43.806Z` |
 
-Para retomar, o titular conclui login Google em `https://minhanota.app`.
-Conferir a reserva com payload original, `event_id`/`aceito_em`, payload e
-snapshot correspondentes no Hub, cron dry-run, status e auditorias. Repetir
-login legítimo sem limpar a reserva e exigir os mesmos IDs/payload e uma
-única outbox/tentativa. Não é preciso criar nova credencial ou refatorar código
-para essa prova: ela usa o token já instalado no consumidor.
+Foi executado **Sair → Entrar com Google → selecionar a mesma conta**,
+sem limpar a reserva. A navegação retornou ao MinhaNota; a ferramenta de
+clique excedeu seu timeout ao aguardar a transição, mas a consulta posterior
+confirmou nova sessão real `GOOGLE_OAUTH`, `iat=1794002054`, mesma conta.
+Não foi necessário repetir o clique ou fabricar callback.
+
+Após o segundo login: mesmo payload (digest igual), mesmos IDs e
+`aceito_em`, somente **um evento, uma outbox, uma tentativa e uma auditoria
+de aceite** para a chave do consumidor. Nenhuma credencial nova ou mudança
+de código foi necessária. A regra geral de idempotência não foi alterada.
+
+Relatório privado sem payload pessoal:
+`.vercel/minhanota-pilot-20261106/google-callback-20261106.private.json`.
+
+| Trecho | Estado atual |
+| --- | --- |
+| API → Todoku Hub | Validado em Production dry-run pelo teste direto anterior |
+| **Google → MinhaNota → Todoku Hub** | **Validado em Production dry-run pelo callback real** |
+| Segundo login Google / duplicação | Validado: reserva preservada, sem evento/outbox/tentativa duplicados |
+| Entrega real | Pendente de confirmação específica e validação do transporte; não habilitada |
 
 ### Escopo de envio real avaliado, não ativado
 
@@ -276,7 +303,11 @@ Os controles atuais permitem um teste sem nova implementação de envio:
    já cadastrado/validado e credenciais/webhook compatíveis antes de propor
    qualquer alteração; não reutilizar por inferência a chave do Mail nem
    criar DNS, domínio ou provedor. A configuração atual é dry-run e não tem
-   chave de envio/webhook; a prontidão desse transporte real não foi comprovada.
+   chave de envio/webhook. A chave legada `RESEND_API_KEY` ainda cadastrada
+   no MinhaNota foi consultada somente em memória: GET de domínios retornou
+   **401**. Isso não comprova domínio verificado nem transporte funcional;
+   não presumir a causa do 401. A aba Resend foi aberta e exige login do
+   responsável; não foram alterados recursos no provedor.
 4. O endpoint existente exige `TODOKU_TEST_SEND_ENABLED=true` em Production
    e POST autenticado com `configurationId` explícito. Essa flag é global,
    **não por evento**; o worker limita o claim à configuração indicada e
@@ -290,10 +321,15 @@ Os controles atuais permitem um teste sem nova implementação de envio:
    recibo/webhook/consulta ao provedor e recebimento na caixa do titular;
    restaurar bloqueio global e configuração dry-run, preservando evidências.
 
-**Nada desse escopo foi ativado.** A confirmação do envio real será solicitada
-somente depois de completar o callback dry-run; autorização para preparar a
-conta não é autorização para enviar. Nenhum recurso adicional de envio foi
-criado nesta continuação.
+**Nada desse escopo foi ativado.** Após comprovar callback e segundo login,
+foram apresentados remetente, destinatário, assunto, texto renderizado e as
+mudanças necessárias (incluindo publicação/restauração da flag via
+GitHub/Vercel) para confirmação. O titular estava indisponível para responder;
+**não houve autorização adicional**. Autorização para preparar a conta não
+foi interpretada como autorização para enviar. Nenhum recurso adicional de
+envio foi criado. A próxima etapa é confirmação do escopo e acesso ao Resend
+existente para validar domínio/credenciais; depois executar e conferir uma
+única entrega, inclusive na caixa do titular, e restaurar dry-run/bloqueio.
 
 ## Backup, preservação e recuperação
 
