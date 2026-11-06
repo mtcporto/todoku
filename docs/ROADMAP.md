@@ -21,7 +21,7 @@
 | MVP funcional do Hub | Backend #31 e painel #32 publicados; 0009, bootstrap e acesso administrativo validados; `todoku/minhanota` com **API → Hub e Google → MinhaNota → Hub validados em Production dry-run** | [Inicialização](HUB-INITIALIZATION.md) e [evidências do piloto](HUB-MINHANOTA-PILOT.md); entrega real depende de confirmação e transporte verificado |
 | Painel de administração do Hub | Interface mínima `/hub` publicada e validada por senha em desktop/celular; **não confundir** com `/mail/admin` | Configuração MinhaNota concluída; dashboard sofisticado adiado |
 | Adaptadores adicionais (SMS, WhatsApp, push, outros provedores) | Ideias futuras | Avaliar necessidade real, custos e compliance por canal |
-| Integrações com apps consumidoras | Boas-vindas do MinhaNota publicadas na #3 (`797886c`), opt-in Production ativo; login Google real, reserva/recibo, template, cron dry-run e auditorias comprovados; segundo login manteve somente um evento/outbox/tentativa | Escopo exato de uma mensagem real apresentado; aguarda confirmação e domínio/chaves Resend verificados (consulta com chave legada retornou 401). Não habilitar envio sem esses requisitos |
+| Integrações com apps consumidoras | Piloto MinhaNota concluído: #3 (`797886c`), login Google e segundo login sem duplicação em dry-run; novo evento API → Hub → Resend → Gmail entregue em 06/11, uma tentativa e webhooks assinados | Dry-run restaurado e flag de teste Production desabilitada. Provas distintas: callback em dry-run e entrega real por evento próprio da API; não implica habilitação contínua de envios |
 
 Referências: [API](API.md), [Delivery](DELIVERY.md), [Operations](OPERATIONS.md). O diagrama por etapas no README é histórico, não prova de conclusão.
 

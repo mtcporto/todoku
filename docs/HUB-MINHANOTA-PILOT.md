@@ -331,7 +331,7 @@ envio foi criado. A próxima etapa é confirmação do escopo e acesso ao Resend
 existente para validar domínio/credenciais; depois executar e conferir uma
 única entrega, inclusive na caixa do titular, e restaurar dry-run/bloqueio.
 
-## Primeiro envio real — operação autorizada em andamento
+## Primeiro envio real — concluído
 
 Em 06/11/2026 às 19h11 (UTC−03), o responsável autorizou explicitamente
 uma mensagem real pelo Hub, com destinatário próprio, remetente e template
@@ -351,10 +351,49 @@ já confirmados, novo evento pela API e conferência Todoku → Resend → Gmail
 - Webhook dedicado:
   `ca7db27c-a397-4938-8fe5-7c6ef01c3a0b`, endpoint existente do Hub associado
   à configuração acima; segredo criptografado no mecanismo BYOK existente.
-- Próximo passo desta janela: liberar flag de teste Production por
-  publicação GitHub/Vercel, criar evento novo pela API, processar somente
-  essa configuração, reconciliar e restaurar os bloqueios. Nenhum envio
-  direto pela API do Resend será realizado.
+- Janela publicada automaticamente via GitHub/Vercel pela PR #34,
+  commit `30aa8647062db92e9cb355ac5e734501601c2b11`,
+  deployment Production `dpl_2DdCuSjeqpX5nM6syxDP9RM17QPf` READY.
+  Nenhum envio direto pela API do Resend.
+
+### Evidências correlacionadas
+
+| Evidência | Resultado |
+| --- | --- |
+| Novo POST autenticado `user.welcome` | HTTP 202; evento `0fbd5888-fde4-4741-b594-0bdf03b1f5c4`, chave exclusiva de teste; não reutilizou o evento dry-run |
+| Persistência e template | Outbox `2be6a14a-560a-4751-8aac-113edf4dc2b5`; snapshot `minhanota.welcome@1`, conteúdo conferido com a mensagem no provedor |
+| Worker publicado | POST restrito à configuração autorizada; uma tentativa Resend bem-sucedida; orçamento `send_count=1` de `send_limit=1` |
+| Resend | Mensagem `01a1b2f1-a21e-7481-8ef5-23ffadff4fa1`, criada em `2026-11-06T22:19:02.706Z`, `last_event=delivered` |
+| Webhooks assinados | `email.sent` processado às `22:19:04.684Z`; `email.delivered` às `22:19:06.772Z` |
+| Status do Hub | `queueStatus=sent`, `deliveryState=delivered`, `attempts=1`, mesmo ID do provedor, sem erro |
+| Gmail autorizado | Uma mensagem na Caixa de entrada às 19h19 (UTC−03), remetente e assunto esperados; conteúdo renderizado do template conferido |
+| Idempotência | Replay HTTP 202 com mesmo evento e `replay=true`; segunda chamada do worker `processed=0`; uma aceitação auditada e uma tentativa |
+
+O Google → MinhaNota → Hub foi provado anteriormente com login real,
+reserva/recibo e segundo login sem duplicação **em dry-run**. Esta nova prova
+comprova **API → Hub → Resend → Gmail**, não um login Google com entrega real.
+As provas são distintas e, juntas, encerram o piloto; não autorizam envio
+contínuo, novas aplicações ou novos destinatários.
+
+### Encerramento e controles
+
+- Configuração real `583d6327-926d-4b87-8720-ec58f8dff855` revogada após
+  consumir exatamente uma mensagem. Original
+  `0abab748-94c0-4aa8-b408-cb3ac71e4be6` restaurada integralmente em dry-run,
+  com auditoria administrativa; digest das outras configurações inalterado.
+- Credencial temporária `events:write` revogada e rejeitada por HTTP 401.
+  Chave temporária de gerenciamento Resend excluída e rejeitada por HTTP 400
+  `validation_error: API key is invalid`; chave Sending existente preservada.
+- Somente o webhook dedicado do teste foi desativado após a reconciliação.
+  Seus eventos e evidências permanecem preservados; hooks do Mail inalterados.
+- Flag Production ajustada para `TODOKU_TEST_SEND_ENABLED=false`; esta PR
+  publica a restauração pelo fluxo automático GitHub/Vercel. Conferir READY,
+  health e POST do worker bloqueado com `403 test_sending_disabled`.
+- Token/variáveis do consumidor e sua reserva Hub não alterados. Nenhum
+  histórico apagado nesta prova, nem DNS, Receiving, fiscal ou quotas alterados.
+- Relatório privado correlacionado:
+  `.vercel/minhanota-pilot-20261106/real-delivery-20261106.private.json`.
+  Destinatário, payload e segredos não são publicados nesta documentação.
 
 ## Backup, preservação e recuperação
 
@@ -376,7 +415,8 @@ e investigar antes de retomar. Não fazer fallback Resend, apagar recibos,
 reaplicar migrações ou restaurar o banco inteiro sobre atividade posterior.
 Restauração remota exige procedimento e aprovação próprios.
 
-Fiscal, certificado A1, ADN/SEFIN, DNS, Cloudflare, Resend e plano contratado
-permanecem fora desta operação. O Mail conserva sua política independente.
+Fiscal, certificado A1, ADN/SEFIN, DNS, Cloudflare e plano contratado
+permanecem fora desta operação. A única exceção Resend foi o teste restrito
+autorizado acima; o Mail conserva sua política independente.
 Qualquer primeiro envio externo exige autorização e evento novos; um evento
 dry-run não deve ser convertido em entrega real.

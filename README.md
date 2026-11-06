@@ -28,8 +28,11 @@ revogada; o token do consumidor e seus históricos foram preservados.
 O fluxo **Google → MinhaNota → Hub também foi validado em Production dry-run**,
 com reserva/recibo do consumidor e segundo login real sem duplicação.
 Somente uma supressão legada de teste foi removida com autorização específica.
-Entrega real permanece **pendente de confirmação e validação do transporte**;
-nenhum envio real foi habilitado.
+**Entrega real validada em 06/11:** novo evento pela API do Hub, uma tentativa
+Resend, webhooks assinados e recebimento na Caixa de entrada do Gmail.
+Replay e segunda execução do worker não duplicaram a mensagem. Piloto concluído;
+configuração dry-run restaurada e flag de teste Production desabilitada.
+Essa prova real usou evento próprio da API, não um terceiro login Google.
 [Inicialização](docs/HUB-INITIALIZATION.md) e
 [estado do piloto](docs/HUB-MINHANOTA-PILOT.md).
 Nenhum envio real foi autorizado por essa inicialização.
