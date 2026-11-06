@@ -331,6 +331,31 @@ envio foi criado. A próxima etapa é confirmação do escopo e acesso ao Resend
 existente para validar domínio/credenciais; depois executar e conferir uma
 única entrega, inclusive na caixa do titular, e restaurar dry-run/bloqueio.
 
+## Primeiro envio real — operação autorizada em andamento
+
+Em 06/11/2026 às 19h11 (UTC−03), o responsável autorizou explicitamente
+uma mensagem real pelo Hub, com destinatário próprio, remetente e template
+já confirmados, novo evento pela API e conferência Todoku → Resend → Gmail.
+
+- Domínio existente `minhanota.app` conferido no painel e API de gerenciamento:
+  `verified`, Sending `enabled`, Receiving `disabled`. Nenhum DNS alterado.
+- Reutilizada a chave de **Sending access** já existente do MinhaNota,
+  correspondente à variável legada do consumidor. Token e variáveis
+  existentes não foram rotacionados nem expostos.
+- Chave de gerenciamento temporária criada somente para configuração e
+  reconciliação; segredo mantido criptografado, sem log ou arquivo em claro.
+- Configuração `test` restrita:
+  `583d6327-926d-4b87-8720-ec58f8dff855`; orçamento uma mensagem, um destinatário.
+  Configuração dry-run anterior preservada para restauração; outras
+  configurações não alteradas. Nenhuma outra configuração `test` ativa.
+- Webhook dedicado:
+  `ca7db27c-a397-4938-8fe5-7c6ef01c3a0b`, endpoint existente do Hub associado
+  à configuração acima; segredo criptografado no mecanismo BYOK existente.
+- Próximo passo desta janela: liberar flag de teste Production por
+  publicação GitHub/Vercel, criar evento novo pela API, processar somente
+  essa configuração, reconciliar e restaurar os bloqueios. Nenhum envio
+  direto pela API do Resend será realizado.
+
 ## Backup, preservação e recuperação
 
 Antes das alterações foram exportados os bancos `todoku` e `minhanota`; DB e

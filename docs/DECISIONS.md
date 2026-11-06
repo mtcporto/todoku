@@ -129,6 +129,29 @@ de transporte ou envio antes da confirmação e verificação. Um novo
 evento de teste real terá chave própria; não converter o snapshot dry-run
 nem apagar sua reserva para reutilizar a mesma chave determinística.
 
+## D-010 — Primeiro envio real restrito do Hub para MinhaNota (06/11/2026)
+
+**Autorização:** após as provas dry-run, o responsável autorizou uma única
+mensagem real para sua conta, remetente `MinhaNota <notificacoes@minhanota.app>`,
+template `minhanota.welcome@1`, novo evento pela API e processamento pelo
+worker do Todoku, com conferência no provedor e Gmail.
+
+**Preparação verificada:** domínio `minhanota.app` verificado com Sending
+habilitado. Reutilizada a chave existente do MinhaNota com Sending access;
+não confundir falta de permissão de consulta de domínios com domínio inválido.
+Chave temporária de gerenciamento criada para verificar/configurar webhook
+e reconciliar o teste, sem uso para enviar diretamente pelo Resend.
+
+**Janela controlada:** configuração `test`
+`583d6327-926d-4b87-8720-ec58f8dff855`, somente `todoku/minhanota`, allowlist
+de um destinatário, limite atômico de uma mensagem. Somente `user.welcome`
+habilitado. O POST do worker exige essa configuração explícita; o cron
+continua dry-run. A flag de teste Production será liberada somente para
+essa operação e restaurada em publicação automática GitHub/Vercel posterior.
+Sem DNS, configuração fiscal ou mudança de runtime. Encerramento exige
+revogação de credenciais temporárias e restauração da configuração dry-run.
+Resultados serão registrados em [evidências](HUB-MINHANOTA-PILOT.md).
+
 ## Histórico e referências
 
 - [Roadmap consolidado](ROADMAP.md)
