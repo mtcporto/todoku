@@ -710,6 +710,7 @@ test("0007 preserves legacy grants, only infers unambiguous draft authors and de
       "0007_mail_authorization",
       "0008_mail_users_invitations_sessions",
       "0009_hub_operations",
+      "0010_hub_template_catalog",
     ]);
     assert.deepEqual(
       (
