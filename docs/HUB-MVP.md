@@ -1,6 +1,16 @@
 # Todoku Hub — MVP funcional (06/11/2026)
 
-## Diagnóstico e sequência
+## Estado operacional posterior à publicação
+
+PRs #30–#32 integradas; painel publicado em `2648f5e`. Em 06/11/2026, após backup
+restaurado localmente e confirmação explícita do ponto de controle, 0009 e
+bootstrap administrativo restrito foram aplicados. APIs, acesso por senha,
+painel desktop/mobile e Mail validados em Production. A conferência manual da
+sessão Google existente permanece pendente. O tenant `todoku` está sem
+aplicações; MinhaNota continua não configurado. Não houve envio real.
+Ver [registro operacional, evidências e recuperação](HUB-INITIALIZATION.md).
+
+## Histórico — diagnóstico e sequência das PRs #31/#32
 
 Ingestão durável, credenciais por aplicação, isolamento, idempotência, snapshot,
 worker/cron, retries, Resend, BYOK e webhooks já existiam. Um envio controlado foi
@@ -16,8 +26,9 @@ ativação individual, operação visual do Hub e consumidor real. Sequência de
 
 A documentação canônica da PR #30 foi integrada por squash em `992590fa`.
 A base de configuração/API da PR #31 também foi integrada à `main`, no commit
-`28d0c47782125dc55c227c296adabfdcea15b92f`. O painel da PR #32 permanece
-**em revisão**, sincronizado com essa base. Integração do código não comprova
+`28d0c47782125dc55c227c296adabfdcea15b92f`. O painel da PR #32 estava
+**em revisão** nesse ponto histórico e foi posteriormente integrado em
+`2648f5e95a147c96f23ca23ad688af76b3892163`. Integração do código não comprova
 migração remota, configuração operacional do piloto ou autorização de envio real.
 
 ## Configuração e compatibilidade
@@ -37,7 +48,8 @@ O bootstrap exige autorização explícita, UUIDs existentes e
 `TODOKU_HUB_ADMIN_BOOTSTRAP_CONFIRMED=true`; executar com o ambiente privado
 correto `node --experimental-strip-types scripts/bootstrap-hub-administrator.ts
 <tenant> <user-uuid> <actor-uuid>`. A operação é transacional e auditada. Não foi
-executada no banco remoto nesta entrega.
+executada remotamente durante a implementação original; a execução operacional
+posterior e sua autorização estão em [HUB-INITIALIZATION.md](HUB-INITIALIZATION.md).
 
 Aplicações legadas mantêm os três templates originais até adotar explicitamente
 o catálogo. A adoção é irreversível pela interface e começa com as quatro
