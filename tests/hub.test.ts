@@ -14,6 +14,7 @@ import { handleEventRequest } from "../src/lib/http.ts";
 import { handleEventStatus } from "../src/lib/event-status.ts";
 import { runWorker } from "../src/lib/worker.ts";
 import { renderManagedTemplate, validateTemplate, commonTemplates } from "../src/lib/hub/templates.ts";
+import { defaultCatalogIds, globalCatalog } from "../src/lib/hub/catalog.ts";
 
 const owner = randomUUID(), stranger = randomUUID();
 const token = "h".repeat(43);
@@ -70,7 +71,7 @@ test("adoption is explicit; common templates start disabled; failures and unknow
     assert.equal(disabled.status, 422);
     assert.equal((await disabled.json()).error, "communication_disabled");
     const catalog = await (await f.req(f.app)).json();
-    assert.equal(catalog.templates.length, 4);
+    assert.equal(catalog.templates.length, defaultCatalogIds.length);
     assert.ok(catalog.bindings.every((binding: { enabled: number }) => binding.enabled === 0));
     assert.equal((await f.req(`${f.app}/bindings`, { eventType: "user.welcome", templateId: "welcome", templateVersion: 1, enabled: true, extra: true })).status, 422);
     assert.equal((await f.req(`${f.app}/bindings`, { eventType: "user.welcome", templateId: "welcome", templateVersion: 2, enabled: true })).status, 422);
@@ -173,5 +174,130 @@ test("disabling a communication also blocks already queued work and session revo
     assert.equal((await f.db.execute("SELECT last_error_code FROM message_deliveries")).rows[0].last_error_code, "communication_disabled");
     await f.db.execute("UPDATE mail_sessions SET revoked_at='2020-01-01T00:00:00Z'");
     assert.equal((await f.req(`${f.app}/bindings`, binding)).status, 401);
+  } finally { f.db.close(); }
+});
+
+test("global catalog covers all requested events; every example renders without transport or unresolved variables", () => {
+  const expected = ["user.welcome", "user.password_reset", "user.email_changed", "user.security_alert", "user.login_code", "account.invitation", "notification.general", "notification.action_required", "billing.payment_confirmed", "billing.payment_failed", "billing.receipt", "support.ticket_created", "support.ticket_updated"];
+  for (const event of expected) assert.ok(globalCatalog.some(item => item.eventType === event));
+  assert.equal(defaultCatalogIds.length, 14); // Includes the compatible existing email verification model.
+  for (const item of globalCatalog) {
+    const { id, subject, body, variables, presentation } = item;
+    const result = renderManagedTemplate(validateTemplate({ id, subject, body, variables, presentation }), item.exampleData, 1);
+    assert.ok(!result.html.includes("{{"), id);
+    assert.ok(!result.text.includes("{{"), id);
+    assert.ok(result.html.includes('role="presentation"'));
+  }
+});
+
+test("default packages are selectable, can be empty, are disabled and create no messages", async () => {
+  const f = await fixture();
+  try {
+    for (const [id, catalogItems] of [["empty-app", []], ["selected-app", ["password-reset", "minhanota.welcome"]]] as const) {
+      assert.equal((await f.req("tenants/hub-a/applications", { id, name: id, senderConfigurationId: f.configuration.configurationId, catalogItems })).status, 200);
+      const catalog = await (await f.req(`tenants/hub-a/applications/${id}`)).json();
+      assert.equal(catalog.templates.length, catalogItems.length);
+      assert.ok(catalog.bindings.every((binding: { enabled: number }) => binding.enabled === 0));
+    }
+    assert.equal((await f.req("tenants/hub-a/applications", { id: "invalid-app", name: "Invalid", senderConfigurationId: f.configuration.configurationId, catalogItems: ["welcome", "minhanota.welcome"] })).status, 422);
+    assert.equal((await f.db.execute("SELECT 1 FROM applications WHERE id='invalid-app'")).rows.length, 0);
+    for (const table of ["events", "outbox_messages", "delivery_attempts"]) assert.equal(Number((await f.db.execute(`SELECT COUNT(*) n FROM ${table}`)).rows[0].n), 0);
+  } finally { f.db.close(); }
+});
+
+test("MinhaNota visual import creates v2, keeps v1 binding and snapshots, and only explicit rebinding changes new events", async () => {
+  const f = await fixture();
+  try {
+    await f.adopt();
+    const old = { id: "minhanota.welcome", subject: "Boas-vindas ao MinhaNota", body: "Olá, {{firstName}}! Acesse https://minhanota.app para começar.", variables: [{ name: "firstName", type: "text" }] };
+    assert.equal((await f.req(`${f.app}/templates`, old)).status, 200);
+    const binding = { eventType: "user.welcome", templateId: old.id, templateVersion: 1, enabled: true };
+    assert.equal((await f.req(`${f.app}/bindings`, binding)).status, 200);
+    const attempt = f.ingest();
+    assert.equal((await attempt.send()).status, 202);
+    const before = (await f.db.execute("SELECT request_json,template_version FROM message_deliveries")).rows[0];
+    assert.equal(before.template_version, "minhanota.welcome@1");
+    const copied = await f.req(`${f.app}/models`, { modelId: old.id });
+    assert.equal(copied.status, 200);
+    assert.equal((await copied.json()).version, 2);
+    const catalog = await (await f.req(f.app)).json();
+    assert.equal(catalog.bindings.find((b: { eventType: string }) => b.eventType === "user.welcome").templateVersion, 1);
+    const preview = await f.req(`${f.app}/preview`, { templateId: old.id, templateVersion: 2, data: { firstName: "Pessoa" } });
+    assert.equal(preview.status, 200);
+    const rendered = await preview.json();
+    assert.ok(rendered.html.includes("Bem-vindo ao MinhaNota!"));
+    assert.ok(rendered.text.includes("Acessar MinhaNota: https://minhanota.app"));
+    assert.equal(Number((await f.db.execute("SELECT COUNT(*) n FROM events")).rows[0].n), 1);
+    assert.equal((await f.req(`${f.app}/bindings`, { ...binding, templateVersion: 2 })).status, 200);
+    assert.equal((await f.ingest().send()).status, 202);
+    const branding = { name: "MinhaNota", primaryColor: "#123456", backgroundColor: "#edf2f7", signature: "Equipe <MinhaNota>", logoUrl: "https://example.invalid/logo.png", websiteUrl: "https://minhanota.app", supportUrl: "https://example.invalid/suporte" };
+    assert.equal((await f.req(`${f.app}/branding`, branding)).status, 200);
+    const brandedAcceptance = await (await f.ingest().send()).json();
+    const branded = JSON.parse(String((await f.db.execute({ sql: "SELECT d.request_json FROM message_deliveries d JOIN outbox_messages o ON o.id=d.outbox_id WHERE o.event_id=?", args: [brandedAcceptance.eventId] })).rows[0].request_json));
+    assert.ok(branded.html.includes("#123456"));
+    assert.ok(branded.html.includes("background:#edf2f7"));
+    assert.ok(branded.html.includes("Equipe &lt;MinhaNota&gt;"));
+    assert.ok(branded.html.includes('src="https://example.invalid/logo.png"'));
+    assert.equal((await (await attempt.send()).json()).replay, true);
+    assert.deepEqual((await f.db.execute("SELECT request_json,template_version FROM message_deliveries WHERE template_version='minhanota.welcome@1'")).rows[0], before);
+    await assert.rejects(() => f.db.execute("UPDATE hub_templates SET presentation_json='{}'"));
+    assert.equal(Number((await f.db.execute("SELECT COUNT(*) n FROM delivery_attempts")).rows[0].n), 0);
+  } finally { f.db.close(); }
+});
+
+test("copies, branding and bindings stay isolated by application and tenant; invalid changes roll back", async () => {
+  const f = await fixture();
+  try {
+    await f.adopt();
+    assert.equal((await f.req("tenants/hub-a/applications", { id: "other", name: "Outra", senderConfigurationId: f.configuration.configurationId, catalogItems: [] })).status, 200);
+    assert.equal((await f.req(`${f.app}/models`, { modelId: "minhanota.welcome" })).status, 200);
+    assert.equal((await f.req(`${f.app}/branding`, { name: "Marca A", primaryColor: "#123456" })).status, 200);
+    const other = await (await f.req("tenants/hub-a/applications/other")).json();
+    assert.equal(other.templates.length, 0);
+    assert.equal(other.branding.name, "Outra");
+    assert.equal(other.branding.primaryColor, "#163b73");
+    assert.equal((await f.req("tenants/hub-a/applications/other/preview", { templateId: "minhanota.welcome", templateVersion: 1, data: { firstName: "Pessoa" } })).status, 422);
+    assert.equal((await f.req("tenants/hub-a/applications/other/bindings", { eventType: "user.welcome", templateId: "minhanota.welcome", templateVersion: 1, enabled: true })).status, 422);
+    assert.equal((await f.req("tenants/hub-b/applications/pilot/branding", { name: "B" })).status, 403);
+    assert.equal((await f.req(`${f.app}/branding`, { name: "Marca", logoUrl: "javascript:alert(1)" })).status, 422);
+    assert.equal((await f.req(`${f.app}/models`, { modelId: "missing" })).status, 422);
+    await f.db.execute("CREATE TRIGGER reject_catalog_audit BEFORE INSERT ON hub_administration_audit BEGIN SELECT RAISE(ABORT,'fixture failure'); END");
+    assert.equal((await f.req(`${f.app}/models`, { modelId: "minhanota.welcome" })).status, 503);
+    assert.equal(Number((await f.db.execute("SELECT MAX(version) v FROM hub_templates WHERE id='minhanota.welcome'")).rows[0].v), 1);
+    assert.equal((await f.req(`${f.app}/branding`, { name: "Must roll back" })).status, 503);
+    assert.equal((await (await f.req(f.app)).json()).branding.name, "Marca A");
+  } finally { f.db.close(); }
+});
+
+test("pending catalog migration fails closed in administration but preserves existing managed and legacy ingestion", async () => {
+  const f = await fixture();
+  try {
+    await f.adopt();
+    assert.equal((await f.req(`${f.app}/bindings`, { eventType: "user.welcome", templateId: "welcome", templateVersion: 1, enabled: true })).status, 200);
+    await f.db.execute("DELETE FROM schema_migrations WHERE version='0010_hub_template_catalog'");
+    assert.equal((await f.req("session")).status, 200);
+    const unavailable = await f.req(f.app);
+    assert.equal(unavailable.status, 503);
+    assert.equal((await unavailable.json()).error, "hub_catalog_setup_required");
+    assert.equal((await f.ingest().send()).status, 202);
+  } finally { f.db.close(); }
+});
+
+test("additional application events reuse existing ingestion, strict variables and dry-run worker", async () => {
+  const f = await fixture();
+  try {
+    await f.adopt();
+    assert.equal((await f.req(`${f.app}/templates`, { id: "project.notice", subject: "Atualização {{reference}}", body: "{{message}}", variables: [{ name: "reference", type: "text" }, { name: "message", type: "text" }], presentation: { heading: "Atualização do projeto" } })).status, 200);
+    const binding = { eventType: "project.notice", templateId: "project.notice", templateVersion: 1, enabled: false };
+    assert.equal((await f.req(`${f.app}/bindings`, binding)).status, 200);
+    assert.equal((await f.ingest({ type: "project.notice", data: { reference: "001", message: "Atualização de teste" } }).send()).status, 422);
+    assert.equal((await f.req(`${f.app}/bindings`, { ...binding, enabled: true })).status, 200);
+    assert.equal((await f.ingest({ type: "project.notice", data: { reference: "001", message: "Atualização de teste", extra: true } }).send()).status, 422);
+    assert.equal((await f.ingest({ type: "project.notice", data: { reference: "001", message: "Atualização de teste" } }).send()).status, 202);
+    await f.db.execute("UPDATE outbox_messages SET available_at='2020-01-01T00:00:00Z'");
+    const worker = await runWorker(f.db, { mode: "dry_run", providerFactory: () => { throw new Error("No real transport is authorized"); } });
+    assert.deepEqual(worker.states, ["dry_run"]);
+    assert.equal((await f.db.execute("SELECT COUNT(*) n FROM events")).rows[0].n, 1);
+    assert.equal((await f.db.execute("SELECT mode,state FROM message_deliveries")).rows[0].state, "dry_run");
   } finally { f.db.close(); }
 });

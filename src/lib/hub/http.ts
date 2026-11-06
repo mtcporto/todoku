@@ -20,6 +20,7 @@ export async function hubRequest(request: Request, segments: string[], db: Clien
     const [resource, tenant, apps, application, collection] = segments;
     if (resource !== "tenants" || !scopeId.safeParse(tenant).success || apps !== "applications" || segments.length > 5 || (application && !scopeId.safeParse(application).success)) return json({ error: "not_found" }, 404);
     await requireHubAdministrator(db, request, tenant);
+    if (!(await db.execute("SELECT 1 FROM schema_migrations WHERE version='0010_hub_template_catalog'")).rows.length) return json({ error: "hub_catalog_setup_required" }, 503);
     if (request.method === "GET" && !collection) return json(await hubCatalog(db, tenant, application));
     if (request.method === "GET" && application && collection === "events") {
       const page = z.coerce.number().int().min(0).max(10000).parse(new URL(request.url).searchParams.get("page") ?? "0");
@@ -39,7 +40,7 @@ export async function hubRequest(request: Request, segments: string[], db: Clien
       if (error instanceof MailError) throw error;
       return json({ error: "invalid_json" }, 400);
     }
-    const operation = !application ? "create-application" : ({ catalog: "adopt-catalog", templates: "template", bindings: "binding", preview: "preview" } as Record<string, string>)[collection];
+    const operation = !application ? "create-application" : ({ catalog: "adopt-catalog", templates: "template", bindings: "binding", preview: "preview", branding: "branding", models: "catalog-model" } as Record<string, string>)[collection];
     if (!operation) return json({ error: "not_found" }, 404);
     return json(await mutateHub(db, request, tenant, application, operation, input));
   } catch (error) {

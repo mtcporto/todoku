@@ -9,6 +9,13 @@ Seu principal objetivo é evitar a redundância de implementação em cada servi
 > [!NOTE]
 > **Status atual do projeto:** Next.js 16, React 19, TypeScript 6 e Node 24, com ingestão durável no Turso, templates versionados, BYOK criptografado, worker autenticado e webhooks assinados do Resend. **Notifications (Hub) permanece dry-run por padrão e marketing está desabilitado; isso não bloqueia o Sending já habilitado e controlado do Todoku Mail para a identidade `contato`.** O Hub requer configuração por tenant/aplicação, domínio verificado, destinatário autorizado e liberação explícita no servidor antes de envio real. Os limites e controles do Mail são independentes dos do Hub. Consulte [docs/API.md](docs/API.md), [docs/DELIVERY.md](docs/DELIVERY.md) e [docs/OPERATIONS.md](docs/OPERATIONS.md). Preferências avançadas e painel continuam no roadmap.
 
+**Templates e eventos:** `/hub` inclui [biblioteca global e identidade visual por
+aplicação](docs/HUB-TEMPLATES.md), pacote inicial opcional, personalização
+versionada e prévia HTML/texto sem envio. Requer migração aditiva 0010.
+O visual original do MinhaNota está disponível como modelo para nova versão,
+preservando @1 e seu contrato. [Eventos candidatos dos seis projetos](docs/HUB-EVENT-CANDIDATES.md)
+são propostas inativas, não integrações implementadas.
+
 ---
 
 **Todoku Mail:** módulo de webmail em `/mail`, com Receiving validado, composição/envio controlado, administração, usuários, perfil e sessões. MVP 3 entregas 1–4 e 7 publicadas; entregas 5–6 (orçamentos/consumo) adiadas. O painel `/mail/admin` não é o painel do Communication Hub. Veja [roadmap consolidado](docs/ROADMAP.md), [decisões](docs/DECISIONS.md) e [documentação Mail](docs/MAIL.md).
@@ -21,7 +28,7 @@ A migração 0009 e o bootstrap administrativo autorizado foram aplicados e
 validados; acesso por senha, APIs e painel em desktop/celular conferidos em
 Production. O responsável confirmou a organização na sessão Google existente.
 A aplicação `todoku/minhanota` está configurada em Production, exclusivamente
-dry-run, com `minhanota.welcome@1`. Em 06/11, o teste HTTP autenticado
+dry-run, com `minhanota.welcome` versionado. Em 06/11, o teste HTTP autenticado
 **API → Hub foi validado em Production**: persistência, replay, snapshot,
 cron dry-run, status e auditoria. A credencial temporária autorizada foi
 revogada; o token do consumidor e seus históricos foram preservados.

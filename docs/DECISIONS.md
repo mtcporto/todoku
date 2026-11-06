@@ -165,6 +165,40 @@ foi provado separadamente em dry-run; a mensagem real veio de novo evento
 identificado da API, sem apagar reservas nem converter snapshots anteriores.
 Ver [evidências](HUB-MINHANOTA-PILOT.md).
 
+## D-011 — Biblioteca reutilizável e identidade por aplicação (06/11/2026)
+
+**Decisão:** evoluir o catálogo e administração existentes, sem reconstruir o
+transporte validado. Biblioteca global curada fornece modelos iniciais
+opcionais; cópias residem nas tabelas existentes por tenant/aplicação.
+Cadastro e adoção apresentam pacote selecionável e todas as associações
+começam desabilitadas. Importação nunca troca um binding existente.
+
+**Identidade:** nome, logotipo, cores principal/de fundo, site, suporte e assinatura são configuração
+da aplicação, não do transporte. Layout reutilizável seguro separado do texto,
+título, botão e rodapé. Novos snapshots congelam a renderização; templates
+antigos sem apresentação mantêm o renderizador anterior. Publicar versão
+não muda associações. @1 do MinhaNota não será sobrescrito: o modelo visual
+recuperado do consumidor é publicado em versão nova com o mesmo `firstName`.
+
+**Migração:** 0010 apenas adiciona colunas JSON anuláveis às tabelas Hub
+existentes. Sem atualização automática de catálogos, migração em build/request
+ou alterações no Mail. Enquanto não aplicada, administração ampliada falha
+explicitamente e ingestão anterior permanece compatível.
+
+**Estado de implementação:** renderização, catálogo e administração implementados;
+167 testes, typecheck, build, consumidor real em fixture e interface
+desktop/celular aprovados. CI e Preview aprovados. 0010 aplicada no banco único
+em 06/11 após backup dos metadados; integridade/FKs, linhas existentes,
+eventos, tentativas, credenciais e configurações de transporte preservados.
+Publicação automática e seleção operacional da nova versão são registradas
+separadamente na [PR #37](https://github.com/mtcporto/todoku/pull/37).
+Não confundir implementação, Preview e Production.
+
+**Limites:** eventos específicos de seis projetos são propostas documentadas
+inativas. Sem emissores, campanhas, novos provedores, DNS, Google Workspace,
+Client/Connect, migração de aplicações ou mensagens reais de teste.
+Ver [templates](HUB-TEMPLATES.md) e [candidatos](HUB-EVENT-CANDIDATES.md).
+
 ## Histórico e referências
 
 - [Roadmap consolidado](ROADMAP.md)
